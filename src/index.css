@@ -1,0 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+    .glass {
+        @apply bg-white/70 backdrop-blur-lg border border-slate-200 shadow-xl;
+    }
+
+    .glass-dark {
+        @apply bg-slate-900/60 backdrop-blur-lg border border-white/10 shadow-xl;
+    }
+
+    /* Adaptive glass that behaves differently in dark mode */
+    .glass-adaptive {
+        @apply bg-white/80 border-slate-200 dark:bg-slate-900/60 dark:border-white/10 backdrop-blur-md border shadow-lg;
+    }
+}
