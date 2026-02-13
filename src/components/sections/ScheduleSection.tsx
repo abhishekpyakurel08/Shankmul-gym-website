@@ -13,7 +13,8 @@ interface ClassSession {
     spotsLeft: number;
 }
 
-const Schedule = () => {
+const ScheduleSection = () => {
+    // ... same data and helper functions ...
     const [activeDay, setActiveDay] = useState('Monday');
     const [selectedClass, setSelectedClass] = useState<ClassSession | null>(null);
 
@@ -52,10 +53,10 @@ const Schedule = () => {
 
     const getIntensityColor = (level: string) => {
         switch (level) {
-            case 'High': return 'text-red-500 bg-red-500/10';
-            case 'Medium': return 'text-yellow-500 bg-yellow-500/10';
-            case 'Low': return 'text-green-500 bg-green-500/10';
-            default: return 'text-slate-500 bg-slate-500/10';
+            case 'High': return 'text-red-600 bg-red-50';
+            case 'Medium': return 'text-orange-600 bg-orange-50';
+            case 'Low': return 'text-green-600 bg-green-50';
+            default: return 'text-slate-500 bg-slate-50';
         }
     };
 
@@ -70,14 +71,14 @@ const Schedule = () => {
     };
 
     return (
-        <div className="pt-24 pb-20">
-            <section className="container mx-auto px-6">
-                <div className="text-center max-w-2xl mx-auto mb-16 animate-fade-in-up">
+        <section id="schedule" className="py-24 px-6 bg-slate-100">
+            <div className="container mx-auto">
+                <div className="text-center max-w-2xl mx-auto mb-16">
                     <span className="text-brand-orange font-bold tracking-wider uppercase text-sm mb-2 block">Class Timetable</span>
-                    <h1 className="font-display text-4xl md:text-6xl font-bold mb-6 dark:text-white">
+                    <h2 className="font-display text-4xl md:text-6xl font-bold mb-6 text-slate-900">
                         Weekly Schedule
-                    </h1>
-                    <p className="text-slate-600 dark:text-slate-400 text-lg">
+                    </h2>
+                    <p className="text-slate-600 text-lg">
                         Find your perfect class. From high-intensity interval training to restorative yoga sequences.
                     </p>
                 </div>
@@ -92,7 +93,7 @@ const Schedule = () => {
                                 "px-6 py-3 rounded-full text-sm font-medium transition-all duration-300",
                                 activeDay === day
                                     ? "bg-brand-orange text-white shadow-lg shadow-orange-900/20 scale-105"
-                                    : "glass-adaptive hover:bg-slate-200 dark:hover:bg-white/5 text-slate-600 dark:text-slate-400"
+                                    : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
                             )}
                         >
                             {day}
@@ -105,31 +106,31 @@ const Schedule = () => {
                     {scheduleData[activeDay]?.map((session) => (
                         <div
                             key={session.id}
-                            className="group relative glass-adaptive rounded-3xl p-6 hover:bg-slate-200 dark:hover:bg-white/5 transition-all duration-300 border border-transparent hover:border-brand-blue/30"
+                            className="group relative rounded-3xl p-6 transition-all duration-300 border border-slate-200 bg-white hover:border-brand-blue/30 shadow-lg shadow-slate-200/50"
                         >
                             <div className="flex justify-between items-start mb-6">
                                 <div className={cn("px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1", getIntensityColor(session.intensity))}>
                                     <Zap size={12} fill="currentColor" />
-                                    {session.intensity}
+                                    {session.intensity} Intensity
                                 </div>
-                                <div className="text-slate-500 dark:text-slate-400 text-sm font-display flex items-center gap-1">
+                                <div className="text-slate-400 text-sm font-display flex items-center gap-1">
                                     <Clock size={14} />
                                     {session.time}
                                 </div>
                             </div>
 
-                            <h3 className="text-xl font-bold font-display mb-2 dark:text-white">{session.title}</h3>
-                            <p className="text-slate-600 dark:text-slate-400 text-sm mb-6 flex items-center gap-2">
+                            <h3 className="text-xl font-bold font-display mb-2 text-slate-900">{session.title}</h3>
+                            <p className="text-slate-500 text-sm mb-6 flex items-center gap-2">
                                 <User size={14} />
                                 {session.trainer}
                             </p>
 
-                            <div className="flex items-center justify-between pt-6 border-t border-slate-200 dark:border-white/10">
+                            <div className="flex items-center justify-between pt-6 border-t border-slate-100">
                                 <div className="flex items-center gap-2 text-sm">
-                                    <div className="p-2 rounded-full bg-slate-800 text-white">
+                                    <div className="p-2 rounded-full bg-slate-900 text-white">
                                         {getTypeIcon(session.type)}
                                     </div>
-                                    <span className="text-slate-600 dark:text-slate-300">{session.type}</span>
+                                    <span className="text-slate-600 font-medium">{session.type}</span>
                                 </div>
 
                                 <Button
@@ -137,7 +138,7 @@ const Schedule = () => {
                                     disabled={session.spotsLeft === 0}
                                     className={cn(
                                         "rounded-full px-6",
-                                        session.spotsLeft === 0 ? "bg-slate-200 dark:bg-slate-800 text-slate-500" : "bg-slate-900 dark:bg-white text-white dark:text-black hover:bg-brand-blue dark:hover:bg-brand-blue hover:text-white dark:hover:text-white"
+                                        session.spotsLeft === 0 ? "bg-slate-100 text-slate-400" : "bg-slate-900 text-white hover:bg-brand-blue transition-colors"
                                     )}
                                 >
                                     {session.spotsLeft === 0 ? 'Full' : 'Book'}
@@ -146,48 +147,48 @@ const Schedule = () => {
                         </div>
                     ))}
                 </div>
-            </section>
+            </div>
 
             {/* Booking Modal */}
             {selectedClass && (
                 <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-slate-900 border border-white/10 rounded-3xl p-8 max-w-md w-full relative animate-in zoom-in-50 duration-300">
+                    <div className="bg-white border border-slate-200 rounded-3xl p-8 max-w-md w-full relative animate-in zoom-in-50 duration-300 shadow-2xl">
                         <button
                             onClick={() => setSelectedClass(null)}
-                            className="absolute top-6 right-6 text-slate-500 hover:text-white"
+                            className="absolute top-6 right-6 text-slate-400 hover:text-slate-900"
                         >
                             <X size={24} />
                         </button>
 
-                        <h3 className="font-display text-2xl font-bold mb-1 text-white">Confirm Booking</h3>
-                        <p className="text-slate-400 text-sm mb-6">You are about to book a spot.</p>
+                        <h3 className="font-display text-2xl font-bold mb-1 text-slate-900">Confirm Booking</h3>
+                        <p className="text-slate-500 text-sm mb-6">You are about to book a spot in this class.</p>
 
-                        <div className="bg-slate-800/50 rounded-2xl p-4 mb-6 space-y-3">
-                            <div className="flex justify-between items-center text-slate-200">
-                                <span className="text-slate-400 text-sm">Class</span>
-                                <span className="font-bold">{selectedClass.title}</span>
+                        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 mb-6 space-y-3">
+                            <div className="flex justify-between items-center">
+                                <span className="text-slate-500 text-sm">Class</span>
+                                <span className="font-bold text-slate-900">{selectedClass.title}</span>
                             </div>
-                            <div className="flex justify-between items-center text-slate-200">
-                                <span className="text-slate-400 text-sm">Time</span>
-                                <span className="font-bold">{selectedClass.time}</span>
+                            <div className="flex justify-between items-center">
+                                <span className="text-slate-500 text-sm">Time</span>
+                                <span className="font-bold text-slate-900">{selectedClass.time}</span>
                             </div>
-                            <div className="flex justify-between items-center text-slate-200">
-                                <span className="text-slate-400 text-sm">Trainer</span>
-                                <span className="font-bold">{selectedClass.trainer}</span>
+                            <div className="flex justify-between items-center">
+                                <span className="text-slate-500 text-sm">Trainer</span>
+                                <span className="font-bold text-slate-900">{selectedClass.trainer}</span>
                             </div>
                         </div>
 
-                        <Button className="w-full h-12 bg-brand-orange hover:bg-orange-600 text-white rounded-xl font-bold text-lg shadow-lg shadow-orange-900/20">
+                        <Button className="w-full h-12 bg-brand-orange hover:bg-orange-600 text-white rounded-xl font-bold text-lg shadow-lg shadow-orange-200">
                             Confirm & Pay
                         </Button>
-                        <p className="text-center text-xs text-slate-500 mt-4">
+                        <p className="text-center text-xs text-slate-400 mt-4">
                             {selectedClass.spotsLeft} spots remaining for this session
                         </p>
                     </div>
                 </div>
             )}
-        </div>
+        </section>
     );
 };
 
-export default Schedule;
+export default ScheduleSection;
