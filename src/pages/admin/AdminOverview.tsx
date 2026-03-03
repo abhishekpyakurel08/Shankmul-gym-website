@@ -9,146 +9,101 @@ import {
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell,
+    BarChart,
+    Bar,
+    Legend
 } from 'recharts';
 import {
     DollarSign,
     Activity,
-    Zap,
     Users,
     ArrowUpRight,
-    PlusCircle,
     TrendingUp,
-    Crown,
-    UserMinus,
-    Send,
-    MessageSquare
+    Clock,
+    XCircle
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { api } from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+    useDashboardSummary,
+    useAbsentMembers,
+    useWeeklyStats,
+    useSendCustomNotification
+} from '../../hooks/useDashboardQueries';
 
 const AdminOverview: React.FC = () => {
-    const { user } = useAuth();
-    const [summary, setSummary] = useState<any>(null);
-    const [absentCount, setAbsentCount] = useState(0);
-    const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
-    const [pendingMembers, setPendingMembers] = useState<any[]>([]);
-    const [weeklyData, setWeeklyData] = useState<any[]>([]);
-    const [actionLoading, setActionLoading] = useState<string | null>(null);
-    const [isRefreshing, setIsRefreshing] = useState(false);
+    const { user } = useAuthStore();
+    const queryClient = useQueryClient();
+    const notifyMutation = useSendCustomNotification();
+
+    const [timeRange, setTimeRange] = useState<string>('7d');
     const [lastUpdated, setLastUpdated] = useState<string>('');
-    const [note, setNote] = useState('');
-    const [staffNotes, setStaffNotes] = useState<any[]>([]);
 
-    const fetchNotes = async () => {
-        try {
-            const res = await api.get('/staff-notes');
-            if (res.success) setStaffNotes(res.data);
-        } catch (err) {
-            console.error("Failed to fetch notes:", err);
-        }
-    };
+    // Queries
+    const { data: summary, isLoading: isSummaryLoading, isRefetching: isSummaryRefetching } = useDashboardSummary();
+    const { data: absentData } = useAbsentMembers();
+    const { data: weeklyData } = useWeeklyStats(timeRange);
 
-    const handleSendNote = async () => {
-        if (!note.trim()) return;
-        try {
-            const res = await api.post('/staff-notes', { text: note });
-            if (res.success) {
-                setNote('');
-            }
-        } catch (err) {
-            console.error("Failed to send note:", err);
-        }
-    };
+    const absentCount = absentData?.length || 0;
+
+    const isRefreshing = isSummaryLoading || isSummaryRefetching;
+
 
     const Skeleton = ({ className }: { className: string }) => (
         <div className={`animate-pulse bg-slate-100 rounded-xl ${className}`} />
     );
 
-    const fetchData = async (silent = false) => {
-        if (!silent) setIsRefreshing(true);
-        try {
-            const [summaryRes, attRes, absentRes, usersRes, weeklyRes] = await Promise.all([
-                api.get('/dashboard/summary'),
-                api.get('/attendance/admin/today'),
-                api.get('/attendance/admin/absent'),
-                api.get('/auth/users'),
-                api.get('/finance/stats/weekly')
-            ]);
-
-            if (summaryRes && summaryRes.success) setSummary(summaryRes.data);
-            if (weeklyRes && weeklyRes.success) setWeeklyData(weeklyRes.data);
-
-            if (attRes && attRes.success) setRecentAttendance(attRes.data.slice(0, 5));
-            if (absentRes && absentRes.success) setAbsentCount(absentRes.data?.length || 0);
-            if (usersRes && usersRes.success) {
-                setPendingMembers(usersRes.data.filter((u: any) => u.membership?.status === 'pending'));
-            }
+    useEffect(() => {
+        if (!isRefreshing) {
             setLastUpdated(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-        } catch (err) {
-            console.error("Dashboard Fetch Error:", err);
-        } finally {
-            setIsRefreshing(false);
         }
-    };
+    }, [isRefreshing]);
 
-    const handleApprove = async (userId: string) => {
-        setActionLoading(userId);
-        try {
-            const res = await api.put(`/auth/membership/approve/${userId}`, {});
-            if (res.success) {
-                fetchData(true);
-            }
-        } catch (err: any) {
-            alert(err.message || 'Approval failed');
-        } finally {
-            setActionLoading(null);
+    // Persistent timeout ref for debouncing
+    const invalidateTimeoutRef = React.useRef<any>(null);
+
+    const debouncedInvalidate = React.useCallback(() => {
+        if (invalidateTimeoutRef.current) {
+            clearTimeout(invalidateTimeoutRef.current);
         }
-    };
+        invalidateTimeoutRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            queryClient.invalidateQueries({ queryKey: ['attendance'] });
+            queryClient.invalidateQueries({ queryKey: ['finance'] });
+            invalidateTimeoutRef.current = null;
+        }, 5000); // 5 second buffer to prevent 429
+    }, [queryClient]);
 
     useEffect(() => {
-        fetchData();
-        const interval = setInterval(() => fetchData(true), 300000);
-
-        // Real-time synchronization
         const token = localStorage.getItem('adminToken');
-        const BACKEND_SOCKET_URL = 'https://shankmul-gym-backend.tecobit.cloud';
+        const BACKEND_SOCKET_URL = import.meta.env.VITE_BACKEND_URL;
 
-        const socket = io(BACKEND_SOCKET_URL, {
+        if (!BACKEND_SOCKET_URL) return;
+
+        const newSocket = io(BACKEND_SOCKET_URL, {
             query: {
                 role: user?.role || 'admin',
                 token: token
             }
         });
 
-        socket.on('connect', () => {
-            console.log('✅ Dashboard connected to real-time engine');
-        });
-
-        const handleRealTimeUpdate = () => {
-            console.log('🔄 Real-time update received, refreshing dashboard...');
-            fetchData(true);
-        };
-
-        socket.on('user_clock_in', handleRealTimeUpdate);
-        socket.on('user_clock_out', handleRealTimeUpdate);
-        socket.on('new_member_registered', handleRealTimeUpdate);
-        socket.on('membership_approved', handleRealTimeUpdate);
-        socket.on('membership_request', handleRealTimeUpdate);
-        socket.on('transaction_added', handleRealTimeUpdate);
-        socket.on('attendance_deleted', handleRealTimeUpdate);
-        socket.on('stats_updated', handleRealTimeUpdate);
-        socket.on('staff_note_added', (newNote: any) => {
-            setStaffNotes(prev => [newNote, ...prev].slice(0, 50));
-        });
-
-        fetchNotes();
+        newSocket.on('user_clock_in', debouncedInvalidate);
+        newSocket.on('user_clock_out', debouncedInvalidate);
+        newSocket.on('new_member_registered', debouncedInvalidate);
+        newSocket.on('membership_approved', debouncedInvalidate);
+        newSocket.on('membership_request', debouncedInvalidate);
+        newSocket.on('transaction_added', debouncedInvalidate);
+        newSocket.on('attendance_deleted', debouncedInvalidate);
+        newSocket.on('stats_updated', debouncedInvalidate);
 
         return () => {
-            clearInterval(interval);
-            socket.disconnect();
+            newSocket.disconnect();
         };
-    }, [user?.role]);
+    }, [user?.role, debouncedInvalidate]);
 
     const allStats = [
         {
@@ -159,15 +114,6 @@ const AdminOverview: React.FC = () => {
             color: 'text-emerald-600',
             bg: 'bg-emerald-50/50',
             access: ['admin', 'reception']
-        },
-        {
-            title: 'Projected (30d)',
-            value: `Rs. ${summary?.financials?.projectedRevenue30d?.toLocaleString() || '0'}`,
-            subtitle: `${summary?.members?.upcomingRenewals30d || 0} Expiring Plans`,
-            icon: <TrendingUp size={18} />,
-            color: 'text-indigo-600',
-            bg: 'bg-indigo-50/50',
-            access: ['admin']
         },
         {
             title: 'Daily Expenses',
@@ -188,30 +134,12 @@ const AdminOverview: React.FC = () => {
             access: ['admin', 'reception']
         },
         {
-            title: 'Pending Review',
-            value: summary?.members?.pendingApprovals || '0',
-            subtitle: 'Queue Awaiting Admin',
-            icon: <Zap size={18} />,
-            color: 'text-amber-500',
-            bg: 'bg-amber-50/50',
-            access: ['admin', 'reception']
-        },
-        {
-            title: 'New Onboarding',
-            value: summary?.members?.newToday || '0',
-            subtitle: 'Total New Registrations',
-            icon: <PlusCircle size={18} />,
-            color: 'text-indigo-600',
-            bg: 'bg-indigo-50/50',
-            access: ['admin', 'reception']
-        },
-        {
             title: 'Monthly Net',
             value: `Rs. ${summary?.financials?.netMonth?.toLocaleString() || '0'}`,
             subtitle: 'Net Profit (Month)',
             icon: <TrendingUp size={18} />,
-            color: summary?.financials?.netMonth >= 0 ? 'text-emerald-600' : 'text-rose-600',
-            bg: summary?.financials?.netMonth >= 0 ? 'bg-emerald-50/50' : 'bg-rose-50/50',
+            color: (summary?.financials?.netMonth || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600',
+            bg: (summary?.financials?.netMonth || 0) >= 0 ? 'bg-emerald-50/50' : 'bg-rose-50/50',
             access: ['admin']
         },
         {
@@ -230,13 +158,13 @@ const AdminOverview: React.FC = () => {
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-12">
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-indigo-600 rounded-lg text-white shadow-lg shadow-indigo-200">
                         <Activity size={20} />
                     </div>
                     <div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Gym Dashboard</h1>
+                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Shankhamul Dashboard</h1>
                         <div className="flex items-center gap-2 mt-1">
                             <div className={`w-2 h-2 rounded-full ${user?.role === 'admin' ? 'bg-emerald-500' : 'bg-indigo-500'} animate-pulse`}></div>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -246,29 +174,58 @@ const AdminOverview: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="hidden lg:flex flex-col items-end mr-2">
-                        <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Global Status: Online</p>
-                        {lastUpdated && <p className="text-[8px] font-bold text-indigo-400 uppercase tracking-tighter">Last Sync: {lastUpdated}</p>}
+                {/* Range Selector */}
+                <div className="flex items-center bg-white p-1 rounded-2xl border border-slate-100 shadow-sm overflow-x-auto no-scrollbar max-w-full">
+                    <div className="flex items-center min-w-max">
+                        {[
+                            { label: '7D', value: '7d' },
+                            { label: '1M', value: '1m' },
+                            { label: '3M', value: '3m' },
+                            { label: '6M', value: '6m' },
+                            { label: '1Y', value: '1y' }
+                        ].map((range) => (
+                            <button
+                                key={range.value}
+                                onClick={() => setTimeRange(range.value)}
+                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeRange === range.value
+                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
+                                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                                    }`}
+                            >
+                                {range.label}
+                            </button>
+                        ))}
                     </div>
-                    <button
-                        onClick={() => fetchData()}
-                        disabled={isRefreshing}
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all shadow-sm group"
-                    >
-                        <TrendingUp size={12} className={`${isRefreshing ? 'animate-bounce' : 'group-hover:translate-y-[-1px]'}`} />
-                        <span>{isRefreshing ? 'Syncing...' : 'Refresh Node'}</span>
-                    </button>
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-50 border-2 border-white shadow-sm flex items-center justify-center overflow-hidden">
+                </div>
+
+                <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                    <div className="flex items-center gap-3">
+                        <div className="hidden sm:flex flex-col items-end mr-2 text-right">
+                            <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Global Status: Online</p>
+                            {lastUpdated && <p className="text-[8px] font-bold text-indigo-400 uppercase tracking-tighter">Last Sync: {lastUpdated}</p>}
+                        </div>
+                        <button
+                            onClick={() => {
+                                queryClient.refetchQueries({ queryKey: ['dashboard'] });
+                                queryClient.refetchQueries({ queryKey: ['dashboard', 'stats', timeRange] });
+                            }}
+                            disabled={isRefreshing}
+                            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all shadow-sm group"
+                        >
+                            <TrendingUp size={12} className={`${isRefreshing ? 'animate-bounce' : 'group-hover:translate-y-[-1px]'}`} />
+                            <span className="hidden xs:inline">{isRefreshing ? 'Syncing...' : 'Refresh Node'}</span>
+                        </button>
+                    </div>
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-50 border-2 border-white shadow-sm flex items-center justify-center overflow-hidden flex-shrink-0">
                         <img src="https://ui-avatars.com/api/?name=Admin&background=4F46E5&color=fff&bold=true" alt="Admin" className="w-full h-full object-cover" />
                     </div>
                 </div>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
-                {isRefreshing && !summary ? (
-                    Array(8).fill(0).map((_, i) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                {isSummaryLoading && !summary ? (
+                    Array(5).fill(0).map((_: any, i: number) => (
                         <div key={i} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm h-32">
                             <Skeleton className="w-1/2 h-4 mb-4" />
                             <Skeleton className="w-3/4 h-8 mb-2" />
@@ -276,7 +233,7 @@ const AdminOverview: React.FC = () => {
                         </div>
                     ))
                 ) : (
-                    stats.map((stat, i) => (
+                    stats.map((stat: any, i: number) => (
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -311,13 +268,16 @@ const AdminOverview: React.FC = () => {
                     >
                         <div className="flex justify-between items-center mb-8">
                             <div>
-                                <h3 className="text-lg font-bold text-slate-800 tracking-tight">Financial Performance Flow</h3>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Weekly Income vs Operational Expense Index</p>
+                                <h3 className="text-lg font-bold text-slate-800 tracking-tight">Earnings vs. Spending</h3>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                    {timeRange === '7d' ? 'Last week\'s' : timeRange === '1m' ? 'Monthly' : timeRange === '3m' ? 'Quarterly' : timeRange === '6m' ? 'Six month' : 'Annual'}
+                                    view of money earned and operational expenses
+                                </p>
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-emerald-100">
                                     <TrendingUp size={12} />
-                                    <span>Profitability High</span>
+                                    <span>Business is Healthy</span>
                                 </div>
                             </div>
                         </div>
@@ -350,12 +310,34 @@ const AdminOverview: React.FC = () => {
                                         tickFormatter={(val) => `Rs.${val}`}
                                     />
                                     <Tooltip
-                                        contentStyle={{
-                                            borderRadius: '16px',
-                                            border: '1px solid #f1f5f9',
-                                            boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
-                                            fontSize: '11px',
-                                            fontWeight: '800'
+                                        content={({ active, payload, label }) => {
+                                            if (active && payload && payload.length) {
+                                                const income = payload.find(p => p.dataKey === 'income')?.value || 0;
+                                                const expense = payload.find(p => p.dataKey === 'expense')?.value || 0;
+                                                const profit = Number(income) - Number(expense);
+                                                return (
+                                                    <div className="bg-white p-4 rounded-2xl shadow-2xl border border-slate-100 min-w-[200px]">
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">{label}</p>
+                                                        <div className="space-y-2">
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="text-[11px] font-bold text-slate-500">Income</span>
+                                                                <span className="text-xs font-black text-emerald-600">+Rs. {income.toLocaleString()}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="text-[11px] font-bold text-slate-500">Expense</span>
+                                                                <span className="text-xs font-black text-rose-600">-Rs. {expense.toLocaleString()}</span>
+                                                            </div>
+                                                            <div className="pt-2 border-t border-slate-50 flex justify-between items-center">
+                                                                <span className="text-[11px] font-black text-slate-900 uppercase italic">Net Profit</span>
+                                                                <span className={`text-xs font-black ${profit >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
+                                                                    {profit >= 0 ? '+' : ''}Rs. {profit.toLocaleString()}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
                                         }}
                                     />
                                     <Area
@@ -390,342 +372,237 @@ const AdminOverview: React.FC = () => {
                         </div>
                     </motion.div>
 
-                    {/* Financial Breakdowns */}
+                    {/* Financial Activity Sidebar */}
                     <motion.div
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.4 }}
-                        className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"
+                        className="space-y-6"
                     >
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-lg font-bold text-slate-800 tracking-tight">Source vs Allocation</h3>
-                            <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-500 rounded-lg text-[9px] font-black uppercase tracking-widest border border-slate-100">
-                                Monthly Breakdown
+                        {/* Pie Chart - Income Breakdown */}
+                        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-lg font-bold text-slate-800 tracking-tight">Where Money Comes From</h3>
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-emerald-100">
+                                    Monthly
+                                </div>
+                            </div>
+
+                            <div className="h-[280px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={summary?.financials?.incomeBreakdown?.map((item: any) => ({
+                                                name: item._id.replace('_', ' '),
+                                                value: item.total
+                                            })) || []}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={90}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {summary?.financials?.incomeBreakdown?.map((_: any, index: number) => (
+                                                <Cell key={`cell-${index}`} fill={['#10b981', '#6366f1', '#8b5cf6', '#ec4899'][index % 4]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            contentStyle={{
+                                                borderRadius: '12px',
+                                                border: '1px solid #f1f5f9',
+                                                boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                                                fontSize: '11px',
+                                                fontWeight: '800'
+                                            }}
+                                            formatter={(value: any) => `Rs. ${value.toLocaleString()}`}
+                                        />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+
+                            <div className="mt-4 space-y-2">
+                                {summary?.financials?.incomeBreakdown?.map((item: any, i: number) => {
+                                    const colors = ['#10b981', '#6366f1', '#8b5cf6', '#ec4899'];
+                                    const percentage = (item.total / summary.financials.revenueThisMonth) * 100 || 0;
+                                    return (
+                                        <div key={i} className="flex items-center justify-between text-xs">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors[i % 4] }}></div>
+                                                <span className="font-bold text-slate-600 capitalize">{item._id.replace('_', ' ')}</span>
+                                            </div>
+                                            <span className="font-black text-slate-900">{Math.round(percentage)}%</span>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
 
-                        <div className="space-y-8">
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex justify-between">
-                                    <span>Source of Income</span>
-                                    <span className="text-emerald-500">Total: Rs. {summary?.financials?.revenueThisMonth?.toLocaleString()}</span>
-                                </p>
-                                <div className="space-y-4">
-                                    {summary?.financials?.incomeBreakdown?.map((item: any, i: number) => {
-                                        const percentage = (item.total / summary.financials.revenueThisMonth) * 100;
-                                        return (
-                                            <div key={i} className="space-y-1">
-                                                <div className="flex justify-between text-[11px] font-bold">
-                                                    <span className="text-slate-600 capitalize">{item._id.replace('_', ' ')}</span>
-                                                    <span className="text-slate-400">{Math.round(percentage)}%</span>
-                                                </div>
-                                                <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
-                                                    <motion.div
-                                                        initial={{ width: 0 }}
-                                                        animate={{ width: `${percentage}%` }}
-                                                        className="h-full bg-emerald-500 rounded-full"
-                                                    />
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                        {/* Bar Chart - Daily Activity */}
+                        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-lg font-bold text-slate-800 tracking-tight">Money Activity History</h3>
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-indigo-100">
+                                    {timeRange === '7d' ? 'Last 7 Days' : timeRange === '1m' ? 'Last 30 Days' : timeRange === '3m' ? 'Last 3 Months' : timeRange === '6m' ? 'Last 6 Months' : 'Last 1 Year'}
                                 </div>
                             </div>
 
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex justify-between">
-                                    <span>Expense Allocation</span>
-                                    <span className="text-rose-500">Total: Rs. {summary?.financials?.expenseThisMonth?.toLocaleString()}</span>
-                                </p>
-                                <div className="space-y-4">
-                                    {summary?.financials?.expenseBreakdown?.map((item: any, i: number) => {
-                                        const percentage = (item.total / summary.financials.expenseThisMonth) * 100;
-                                        return (
-                                            <div key={i} className="space-y-1">
-                                                <div className="flex justify-between text-[11px] font-bold">
-                                                    <span className="text-slate-600 capitalize">{item._id.replace('_', ' ')}</span>
-                                                    <span className="text-slate-400">{Math.round(percentage)}%</span>
-                                                </div>
-                                                <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
-                                                    <motion.div
-                                                        initial={{ width: 0 }}
-                                                        animate={{ width: `${percentage}%` }}
-                                                        className="h-full bg-rose-500 rounded-full"
-                                                    />
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                            <div className="h-[280px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={weeklyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                        <XAxis
+                                            dataKey="name"
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                                        />
+                                        <YAxis
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                                            tickFormatter={(val) => `${val / 1000}k`}
+                                        />
+                                        <Tooltip
+                                            content={({ active, payload, label }) => {
+                                                if (active && payload && payload.length) {
+                                                    const income = payload.find(p => p.dataKey === 'income')?.value || 0;
+                                                    const expense = payload.find(p => p.dataKey === 'expense')?.value || 0;
+                                                    return (
+                                                        <div className="bg-white p-4 rounded-2xl shadow-2xl border border-slate-100 min-w-[180px]">
+                                                            <p className="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">{label}</p>
+                                                            <div className="space-y-1.5">
+                                                                <div className="flex justify-between items-center gap-4">
+                                                                    <span className="text-[11px] font-bold text-slate-500">Collected</span>
+                                                                    <span className="text-xs font-black text-emerald-600">Rs. {income.toLocaleString()}</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center gap-4">
+                                                                    <span className="text-[11px] font-bold text-slate-500">Spent</span>
+                                                                    <span className="text-xs font-black text-rose-600">Rs. {expense.toLocaleString()}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            }}
+                                        />
+                                        <Legend
+                                            wrapperStyle={{ fontSize: '10px', fontWeight: '800' }}
+                                        />
+                                        <Bar dataKey="income" fill="#10b981" radius={[8, 8, 0, 0]} />
+                                        <Bar dataKey="expense" fill="#ef4444" radius={[8, 8, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
                             </div>
                         </div>
                     </motion.div>
                 </div>
             )}
 
-            {/* Advanced Insights Row - Admin Only */}
-            {user?.role === 'admin' && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Top Spenders */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5 }}
-                        className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden"
-                    >
-                        <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-indigo-50/30">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-200">
-                                    <Crown size={18} />
-                                </div>
-                                <h3 className="text-lg font-black text-slate-800 tracking-tight">Top Financial Contributors</h3>
+            {/* Bottom Insight Rows */}
+            {user?.role === 'admin' && summary && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                    {/* Top Spenders Card */}
+                    <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center justify-between mb-8">
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                                    <TrendingUp size={20} className="text-indigo-600" />
+                                    Top Contributors
+                                </h3>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Highest lifetime value members</p>
                             </div>
-                            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-white px-3 py-1 rounded-lg border border-indigo-100">All-time Index</span>
+                            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
+                                <Users size={20} />
+                            </div>
                         </div>
-                        <div className="p-2">
-                            {summary?.financials?.topSpenders?.length > 0 ? summary.financials.topSpenders.map((sp: any, i: number) => (
-                                <div key={i} className="flex items-center justify-between p-4 hover:bg-slate-50 rounded-2xl transition-all group">
-                                    <div className="flex items-center gap-4">
-                                        <div className="relative">
-                                            <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 font-black">
-                                                {sp.name.charAt(0)}
-                                            </div>
-                                            {i === 0 && <div className="absolute -top-2 -right-2 bg-amber-400 text-white p-1 rounded-lg shadow-lg"><Crown size={10} /></div>}
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-black text-slate-900 leading-none mb-1">{sp.name}</p>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{sp.plan} Member</p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-sm font-black text-emerald-600 tracking-tight">Rs. {sp.totalSpent?.toLocaleString()}</p>
-                                        <p className="text-[9px] font-black text-slate-300 uppercase tracking-tighter">Gross Contribution</p>
-                                    </div>
-                                </div>
-                            )) : (
-                                <div className="py-12 text-center text-slate-300 uppercase font-black text-[10px] tracking-widest">No spending data feed</div>
-                            )}
-                        </div>
-                    </motion.div>
 
-                    {/* Churn Risk */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.6 }}
-                        className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden"
-                    >
-                        <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-rose-50/30">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-rose-500 rounded-xl text-white shadow-lg shadow-rose-200">
-                                    <UserMinus size={18} />
-                                </div>
-                                <h3 className="text-lg font-black text-slate-800 tracking-tight">Retention Risk Alerts</h3>
-                            </div>
-                            <span className="text-[10px] font-black text-rose-600 uppercase tracking-widest bg-white px-3 py-1 rounded-lg border border-rose-100">14+ Days Inactive</span>
-                        </div>
-                        <div className="p-2">
-                            {summary?.members?.churnRisk?.length > 0 ? summary.members.churnRisk.map((cr: any, i: number) => (
-                                <div key={i} className="flex items-center justify-between p-4 hover:bg-slate-50 rounded-2xl transition-all group">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-300 font-black">
-                                            {cr.name.charAt(0)}
+                        <div className="space-y-4">
+                            {summary?.financials?.topSpenders?.length > 0 ? (
+                                summary.financials.topSpenders.map((member: any, idx: number) => (
+                                    <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-all group">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-black text-indigo-600 shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                                {idx + 1}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-black text-slate-900">{member.name}</p>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{member.plan || 'No Plan'}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-black text-slate-900 leading-none mb-1">{cr.name}</p>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{cr.plan} • At Risk</p>
+                                        <div className="text-right">
+                                            <p className="text-sm font-black text-emerald-600">Rs. {member.totalSpent?.toLocaleString()}</p>
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Total Investment</p>
                                         </div>
                                     </div>
-                                    <button className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-100 transition-all">
-                                        <Activity size={12} />
-                                        <span>Nudge</span>
-                                    </button>
-                                </div>
-                            )) : (
-                                <div className="py-12 text-center text-slate-300 uppercase font-black text-[10px] tracking-widest">Perfect retention detected</div>
+                                ))
+                            ) : (
+                                <p className="text-center py-8 text-slate-400 italic text-sm">Gathering contributor data...</p>
                             )}
                         </div>
-                    </motion.div>
+                    </div>
+
+                    {/* Churn Risk / At Risk Card */}
+                    <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center justify-between mb-8">
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                                    <XCircle size={20} className="text-rose-600" />
+                                    Retention Alert
+                                </h3>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Inactive members (14+ Days)</p>
+                            </div>
+                            <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl">
+                                <Clock size={20} />
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            {summary?.members?.churnRisk?.length > 0 ? (
+                                summary.members.churnRisk.map((member: any, idx: number) => (
+                                    <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-rose-200 transition-all group">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-xl bg-rose-100 border border-rose-200 flex items-center justify-center font-black text-rose-600 shadow-sm">
+                                                {member.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-black text-slate-900">{member.name}</p>
+                                                <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">At Risk • {member.plan || 'No Plan'}</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                notifyMutation.mutate({
+                                                    userIds: [member._id],
+                                                    title: 'We miss you! 🏋️',
+                                                    message: `Hi ${member.name.split(' ')[0]}, we haven't seen you in 14 days! Consistency is key to reaching your goals. See you tomorrow?`
+                                                }, {
+                                                    onSuccess: () => alert(`Re-engagement alert sent to ${member.name}!`)
+                                                });
+                                            }}
+                                            disabled={notifyMutation.status === 'pending'}
+                                            className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-600 uppercase tracking-widest hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all disabled:opacity-50"
+                                        >
+                                            {notifyMutation.status === 'pending' && notifyMutation.variables?.userIds[0] === member._id ? 'Sending...' : 'Re-engage'}
+                                        </button>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-4">
+                                        <TrendingUp size={24} />
+                                    </div>
+                                    <p className="text-slate-900 font-black text-sm">Perfect Retention!</p>
+                                    <p className="text-slate-400 font-bold text-xs mt-1">No active members at risk today.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
 
-            {/* Activities & Approvals Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                {/* Recent Activity Table */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.7 }}
-                    className="xl:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
-                >
-                    <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                        <h3 className="text-lg font-bold text-slate-800 tracking-tight">Live Member Check-ins</h3>
-                        <button className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700">View History</button>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead>
-                                <tr className="bg-slate-50/50">
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Member</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Time</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {recentAttendance.length > 0 ? recentAttendance.map((att, i) => (
-                                    <tr key={i} className="hover:bg-slate-50/30 transition-colors group">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 font-black text-[10px]">
-                                                    {att.userId?.firstName?.charAt(0) || 'U'}{att.userId?.lastName?.charAt(0) || 'N'}
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs font-black text-slate-900 leading-none mb-0.5">{att.userId?.firstName || 'Unknown'} {att.userId?.lastName || 'User'}</p>
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{att.userId?.membership?.plan || 'Regular'} Member</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col">
-                                                <p className="text-xs font-bold text-slate-600 tracking-tight">
-                                                    {att.clockIn ? new Date(att.clockIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--:--'}
-                                                </p>
-                                                <p className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter">
-                                                    {att.clockOut ? 'Clocked Out' : 'Currently In'}
-                                                </p>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <button className="p-2 hover:bg-slate-50 rounded-lg text-slate-300 group-hover:text-indigo-600 transition-colors">
-                                                <ArrowUpRight size={16} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                )) : (
-                                    <tr>
-                                        <td colSpan={3} className="px-6 py-12 text-center">
-                                            <p className="text-xs font-bold text-slate-400 uppercase italic">No active sessions detected</p>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </motion.div>
 
-                {/* Team Communications Section */}
-                <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.9 }}
-                    className="bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col min-h-[500px]"
-                >
-                    <div className="p-6 border-b border-slate-100 bg-indigo-50/30 flex items-center gap-3">
-                        <div className="p-2 bg-indigo-600 rounded-lg text-white">
-                            <MessageSquare size={18} />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-800 tracking-tight">Staff Quick Notes</h3>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Internal Team Coordination</p>
-                        </div>
-                    </div>
-
-                    <div className="flex-1 p-6 space-y-4 overflow-y-auto max-h-[400px]">
-                        {staffNotes.map((n) => (
-                            <div key={n.id} className={`p-4 rounded-2xl ${n.user === 'Admin' ? 'bg-indigo-50/50 border border-indigo-100 ml-4' : 'bg-slate-50 border border-slate-100 mr-4'}`}>
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className={`text-[10px] font-black uppercase tracking-widest ${n.user === 'Admin' ? 'text-indigo-600' : 'text-slate-500'}`}>{n.user}</span>
-                                    <span className="text-[9px] font-bold text-slate-300 uppercase">{n.time || new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                </div>
-                                <p className="text-sm text-slate-800 font-medium leading-relaxed">{n.text}</p>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="p-6 border-t border-slate-100">
-                        <div className="flex gap-2 p-2 bg-slate-50 rounded-2xl border border-slate-100 focus-within:border-indigo-300 transition-all">
-                            <input
-                                type="text"
-                                value={note}
-                                onChange={(e) => setNote(e.target.value)}
-                                onKeyPress={(e) => e.key === 'Enter' && handleSendNote()}
-                                placeholder="Type a note for the team..."
-                                className="flex-1 bg-transparent border-none outline-none text-sm px-3 font-medium text-slate-700 placeholder:text-slate-400"
-                            />
-                            <button
-                                onClick={handleSendNote}
-                                className="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
-                            >
-                                <Send size={18} />
-                            </button>
-                        </div>
-                    </div>
-                </motion.div>
-            </div>
-
-            {/* Membership Approvals Section (Admin Only) */}
-            {user?.role === 'admin' && (
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 1.0 }}
-                    className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
-                >
-                    <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-amber-50/30">
-                        <div className="flex items-center gap-2">
-                            <Zap size={18} className="text-amber-500" />
-                            <h3 className="text-lg font-bold text-slate-800 tracking-tight">Pending Approvals</h3>
-                        </div>
-                        <span className="px-2 py-1 bg-amber-100 text-amber-600 rounded-lg text-[10px] font-black uppercase tracking-widest">
-                            {pendingMembers.length} Requests
-                        </span>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead>
-                                <tr className="bg-slate-50/50">
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Member</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {pendingMembers.length > 0 ? pendingMembers.map((member, i) => (
-                                    <tr key={i} className="hover:bg-slate-50/30 transition-colors group">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 font-black text-[10px]">
-                                                    {member.firstName.charAt(0)}{member.lastName?.charAt(0) || ''}
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs font-black text-slate-900 leading-none mb-0.5">{member.firstName} {member.lastName}</p>
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{member.employeeId}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <button
-                                                onClick={() => handleApprove(member._id)}
-                                                disabled={actionLoading === member._id}
-                                                className={`px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all ${actionLoading === member._id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                            >
-                                                {actionLoading === member._id ? (
-                                                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                ) : 'Approve'}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                )) : (
-                                    <tr>
-                                        <td colSpan={2} className="px-6 py-8 text-center">
-                                            <p className="text-xs font-bold text-slate-400 uppercase italic">No pending requests found</p>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </motion.div>
-            )}
         </div>
     );
 };

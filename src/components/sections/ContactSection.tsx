@@ -33,7 +33,7 @@ const ContactSection = () => {
                                     </div>
                                     Call Us
                                 </div>
-                                <p className="text-slate-600 pl-13">+977 1-2345678<br />+977 9876543210</p>
+                                <p className="text-slate-600 pl-13">01-4793718</p>
                             </div>
 
                             <div className="space-y-4">
@@ -70,7 +70,7 @@ const ContactSection = () => {
 
                             {/* Floating Card on Map */}
                             <div className="absolute bottom-8 left-8 right-8 bg-white/90 backdrop-blur-md p-6 rounded-3xl border border-white/20 shadow-xl hidden md:block">
-                                <h3 className="font-bold text-slate-900 mb-2">Shankhamul Health Club</h3>
+                                <h3 className="font-bold text-slate-900 mb-2">Shankhamul Health Club & Fitness Centre</h3>
                                 <p className="text-sm text-slate-600">Health Club and Fitness Centre</p>
                                 <a
                                     href="https://maps.google.com"

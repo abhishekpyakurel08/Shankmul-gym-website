@@ -21,7 +21,7 @@ const ServicesSection = () => {
             description: "High-energy classes led by expert instructors to keep you motivated and moving.",
             color: "bg-brand-blue",
             features: ["Zumba & Dance", "Yoga & Pilates", "HIIT & Cardio", "Spinning"],
-            price: "Included in Membership",
+            price: "Complimentary with Gym Access",
             details: "Join our vibrant community in one of our many group fitness classes. From the high-energy beats of Zumba to the mindful flows of Yoga, we have something for everyone. Our expert instructors will guide you through every move, ensuring a safe and effective workout that's also a ton of fun."
 
         },
@@ -41,7 +41,7 @@ const ServicesSection = () => {
             description: "Relax and recover after a hard workout with our premium sauna and steam facilities.",
             color: "bg-purple-500",
             features: ["Steam Room", "Sauna", "Massage Therapy", "Physiotherapy Support"],
-            price: "Included in Premium/Elite",
+            price: "Premium Facility Access",
             details: "Recovery is just as important as training. Our spa facilities include a traditional Finnish sauna, a eucalyptus steam room, and cold plunge pools to help reduce inflammation and speed up muscle recovery. We also offer on-site massage therapy and physiotherapy consultations to keep your body in peak condition."
         }
     ];

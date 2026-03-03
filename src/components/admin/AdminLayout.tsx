@@ -10,7 +10,6 @@ import {
     LogOut,
     Bell,
     Menu,
-    Briefcase,
     Clock,
     UserPlus,
     AlertCircle
@@ -46,7 +45,6 @@ const AdminLayout: React.FC = () => {
         { to: '/admin/members', icon: <Users size={20} />, label: 'Members' },
         ...(user?.role === 'admin' ? [
             { to: '/admin/finance', icon: <DollarSign size={20} />, label: 'Reports' },
-            { to: '/admin/staff', icon: <Briefcase size={20} />, label: 'Staff' },
         ] : []),
 
         { to: '/admin/notifications', icon: <Bell size={20} />, label: 'Alert Center' },
@@ -54,19 +52,36 @@ const AdminLayout: React.FC = () => {
 
     return (
         <div className="flex h-screen bg-slate-50/50 font-sans">
+            {/* Sidebar Overlay for Mobile */}
+            <AnimatePresence>
+                {isSidebarOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setIsSidebarOpen(false)}
+                        className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 md:hidden"
+                    />
+                )}
+            </AnimatePresence>
+
             {/* Sidebar */}
             <aside
                 className={`
-                    ${isSidebarOpen ? 'w-64' : 'w-20'} 
-                    bg-white border-r border-slate-100 text-slate-500 transition-all duration-300 ease-in-out flex flex-col z-40
+                    fixed md:relative
+                    ${isSidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0 md:w-20'} 
+                    bg-white border-r border-slate-100 text-slate-500 transition-all duration-300 ease-in-out flex flex-col z-50 h-full
                 `}
             >
-                <div className="p-6 mb-4 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shrink-0 shadow-md shadow-indigo-100">
-                        <span className="text-white font-black text-lg">S</span>
+                <div className="p-4 mb-4 flex items-center gap-3">
+                    <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shrink-0 shadow-sm overflow-hidden border border-slate-100">
+                        <img src="/shankhamul-logo.jpg" alt="Shankhamul Logo" className="w-full h-full object-cover" />
                     </div>
                     {isSidebarOpen && (
-                        <h1 className="text-slate-900 font-bold text-lg tracking-tight">Shankmul Gym</h1>
+                        <h1 className="text-slate-900 font-bold text-sm tracking-tight leading-none">
+                            Shankhamul<br />
+                            <span className="text-indigo-600 text-[9px] uppercase tracking-widest font-black">Health Club & Fitness</span>
+                        </h1>
                     )}
                 </div>
 
@@ -75,6 +90,7 @@ const AdminLayout: React.FC = () => {
                         <NavLink
                             key={item.to}
                             to={item.to}
+                            onClick={() => window.innerWidth < 768 && setIsSidebarOpen(false)}
                             className={({ isActive }) => `
                                 flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
                                 ${isActive
@@ -83,7 +99,7 @@ const AdminLayout: React.FC = () => {
                             `}
                         >
                             <span className={`shrink-0 ${isSidebarOpen ? '' : 'mx-auto'}`}>{item.icon}</span>
-                            {isSidebarOpen && <span className="font-semibold text-sm">{item.label}</span>}
+                            {(isSidebarOpen || window.innerWidth < 768) && <span className="font-semibold text-sm">{item.label}</span>}
                         </NavLink>
                     ))}
                 </nav>
@@ -109,15 +125,15 @@ const AdminLayout: React.FC = () => {
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col overflow-hidden">
-                <header className="h-16 flex justify-between items-center bg-white px-8 border-b border-slate-100 z-30">
+                <header className="h-16 flex justify-between items-center bg-white px-4 md:px-8 border-b border-slate-100 z-30">
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            className="p-1.5 hover:bg-slate-100 rounded-md text-slate-500 transition-colors md:hidden"
+                            className="p-1.5 hover:bg-slate-100 rounded-md text-slate-500 transition-colors"
                         >
                             <Menu size={20} />
                         </button>
-                        <h2 className="text-xl font-black text-slate-900 tracking-tight">System Console</h2>
+                        <h2 className="text-lg md:text-xl font-black text-slate-900 tracking-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px] md:max-w-none">System Console</h2>
                     </div>
 
                     <div className="flex items-center gap-6">
@@ -209,19 +225,19 @@ const AdminLayout: React.FC = () => {
                             </AnimatePresence>
                         </div>
 
-                        <Link to="/admin/profile" className="flex items-center gap-3 pl-6 border-l border-slate-100 group">
-                            <div>
-                                <p className="text-right text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1 group-hover:text-indigo-600 transition-colors">Authenticated</p>
-                                <p className="text-xs font-black text-slate-900 tracking-tight group-hover:text-indigo-600 transition-colors">{user?.firstName} {user?.lastName}</p>
+                        <Link to="/admin/profile" className="flex items-center gap-3 pl-4 md:pl-6 border-l border-slate-100 group">
+                            <div className="hidden xs:block text-right">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1 group-hover:text-indigo-600 transition-colors">Auth OK</p>
+                                <p className="text-xs font-black text-slate-900 tracking-tight group-hover:text-indigo-600 transition-colors">{user?.firstName}</p>
                             </div>
-                            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-sm font-black shadow-lg shadow-indigo-100 group-hover:scale-105 transition-transform">
+                            <div className="w-9 h-9 md:w-10 md:h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-[11px] md:text-sm font-black shadow-lg shadow-indigo-100 group-hover:scale-105 transition-transform">
                                 {user?.firstName?.[0]}{user?.lastName?.[0]}
                             </div>
                         </Link>
                     </div>
                 </header>
 
-                <main className="flex-1 overflow-x-hidden overflow-y-auto p-8 bg-slate-50/30">
+                <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8 bg-slate-50/30">
                     <div className="max-w-[1600px] mx-auto">
                         <Outlet />
                     </div>

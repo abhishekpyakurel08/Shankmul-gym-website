@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import {
     Activity,
@@ -8,14 +9,10 @@ import {
     Zap,
     Search,
     Clock,
-    UserCheck,
     AlertCircle,
     TrendingUp,
     CheckCircle2,
     XCircle,
-    Calendar,
-    MessageSquare,
-    Send,
     DollarSign,
     Plus,
     X,
@@ -24,34 +21,35 @@ import {
     Wallet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api } from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+    useDashboardSummary,
+    useTodayAttendance,
+    useAbsentMembers,
+    useUsers,
+    useApproveMembership,
+    useAddTransaction
+} from '../../hooks/useDashboardQueries';
 
 const ReceptionDashboard: React.FC = () => {
-    const { user } = useAuth();
-    const [summary, setSummary] = useState<any>(null);
-    const [attendance, setAttendance] = useState<any[]>([]);
-    const [pendingApprovals, setPendingApprovals] = useState<any[]>([]);
-    const [absentCount, setAbsentCount] = useState(0);
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const [, setLastUpdated] = useState('');
+    const { user } = useAuthStore();
+    const queryClient = useQueryClient();
+    const navigate = useNavigate();
+
+    // Queries
+    const { data: summary, isLoading: isSummaryLoading, isRefetching: isSummaryRefetching } = useDashboardSummary();
+    const { data: attendanceData } = useTodayAttendance();
+    const { data: absentData } = useAbsentMembers();
+    const { data: usersData } = useUsers();
+
+    // Mutations
+    const approveMutation = useApproveMembership();
+    const addTransactionMutation = useAddTransaction();
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [note, setNote] = useState('');
-    const [teamNotes, setTeamNotes] = useState<any[]>([]);
-
-    const fetchNotes = async () => {
-        try {
-            const res = await api.get('/staff-notes');
-            if (res.success) setTeamNotes(res.data);
-        } catch (err) {
-            console.error("Failed to fetch notes:", err);
-        }
-    };
-
-    // Income Recording State
     const [showIncomeModal, setShowIncomeModal] = useState(false);
-    const [isSavingIncome, setIsSavingIncome] = useState(false);
+
     const [newIncome, setNewIncome] = useState({
         category: 'income',
         type: 'subscription',
@@ -61,37 +59,14 @@ const ReceptionDashboard: React.FC = () => {
         userName: ''
     });
 
-    const fetchData = async (silent = false) => {
-        if (!silent) setIsRefreshing(true);
-        try {
-            const [summaryRes, attRes, absentRes, usersRes] = await Promise.all([
-                api.get('/dashboard/summary'),
-                api.get('/attendance/admin/today'),
-                api.get('/attendance/admin/absent'),
-                api.get('/auth/users')
-            ]);
-
-            if (summaryRes?.success) setSummary(summaryRes.data);
-            if (attRes?.success) setAttendance(attRes.data.slice(0, 10));
-            if (absentRes?.success) setAbsentCount(absentRes.data?.length || 0);
-            if (usersRes?.success) {
-                setPendingApprovals(usersRes.data.filter((u: any) => u.membership?.status === 'pending'));
-            }
-            setLastUpdated(new Date().toLocaleTimeString());
-        } catch (err) {
-            console.error("Reception Fetch Error:", err);
-        } finally {
-            setIsRefreshing(false);
-        }
-    };
+    const isRefreshing = isSummaryLoading || isSummaryRefetching;
+    const attendance = attendanceData?.slice(0, 10) || [];
+    const absentCount = absentData?.length || 0;
+    const pendingApprovals = usersData?.filter((u: any) => u.membership?.status === 'pending') || [];
 
     useEffect(() => {
-        fetchData();
-        const interval = setInterval(() => fetchData(true), 60000);
-
-        // Real-time synchronization
         const token = localStorage.getItem('adminToken');
-        const BACKEND_SOCKET_URL = 'https://shankmul-gym-backend.tecobit.cloud';
+        const BACKEND_SOCKET_URL = import.meta.env.VITE_BACKEND_URL;
 
         const socket = io(BACKEND_SOCKET_URL, {
             query: {
@@ -100,55 +75,32 @@ const ReceptionDashboard: React.FC = () => {
             }
         });
 
-        socket.on('connect', () => {
-            console.log('✅ Reception connected to real-time engine');
-        });
-
-        const handleRealTimeUpdate = () => {
-            console.log('🔄 Reception real-time update, refreshing...');
-            fetchData(true);
+        const invalidateReceptionData = () => {
+            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            queryClient.invalidateQueries({ queryKey: ['attendance'] });
+            queryClient.invalidateQueries({ queryKey: ['users'] });
         };
 
-        socket.on('user_clock_in', handleRealTimeUpdate);
-        socket.on('user_clock_out', handleRealTimeUpdate);
-        socket.on('new_member_registered', handleRealTimeUpdate);
-        socket.on('membership_approved', handleRealTimeUpdate);
-        socket.on('membership_request', handleRealTimeUpdate);
-        socket.on('transaction_added', handleRealTimeUpdate);
-        socket.on('attendance_deleted', handleRealTimeUpdate);
-        socket.on('stats_updated', handleRealTimeUpdate);
-        socket.on('staff_note_added', (newNote: any) => {
-            setTeamNotes(prev => [newNote, ...prev].slice(0, 50));
-        });
+        socket.on('user_clock_in', invalidateReceptionData);
+        socket.on('user_clock_out', invalidateReceptionData);
+        socket.on('new_member_registered', invalidateReceptionData);
+        socket.on('membership_approved', invalidateReceptionData);
+        socket.on('membership_request', invalidateReceptionData);
+        socket.on('transaction_added', invalidateReceptionData);
+        socket.on('attendance_deleted', invalidateReceptionData);
+        socket.on('stats_updated', invalidateReceptionData);
 
-        fetchNotes();
 
         return () => {
-            clearInterval(interval);
             socket.disconnect();
         };
-    }, []);
+    }, [user?.role, queryClient]);
 
     const handleApprove = async (id: string) => {
-        try {
-            const res = await api.put(`/auth/membership/approve/${id}`, {});
-            if (res.success) fetchData(true);
-        } catch (err) {
-            alert('Approval failed');
-        }
+        approveMutation.mutate(id);
     };
 
-    const handleSendNote = async () => {
-        if (!note.trim()) return;
-        try {
-            const res = await api.post('/staff-notes', { text: note });
-            if (res.success) {
-                setNote('');
-            }
-        } catch (err) {
-            console.error("Failed to send note:", err);
-        }
-    };
+
 
     const handleSaveIncome = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -157,15 +109,14 @@ const ReceptionDashboard: React.FC = () => {
             return;
         }
 
-        setIsSavingIncome(true);
-        try {
-            const payload = {
-                ...newIncome,
-                amount: Number(newIncome.amount),
-                description: newIncome.description || `Reception Entry: ${newIncome.userName || 'General'}`
-            };
-            const res = await api.post('/finance/transactions/add', payload);
-            if (res && res.success) {
+        const payload = {
+            ...newIncome,
+            amount: Number(newIncome.amount),
+            description: newIncome.description || `Reception Entry: ${newIncome.userName || 'General'}`
+        };
+
+        addTransactionMutation.mutate(payload, {
+            onSuccess: () => {
                 setShowIncomeModal(false);
                 setNewIncome({
                     category: 'income',
@@ -175,13 +126,8 @@ const ReceptionDashboard: React.FC = () => {
                     description: '',
                     userName: ''
                 });
-                fetchData(true);
             }
-        } catch (err: any) {
-            alert(err.message || 'Income record failed');
-        } finally {
-            setIsSavingIncome(false);
-        }
+        });
     };
 
     const stats = [
@@ -201,27 +147,34 @@ const ReceptionDashboard: React.FC = () => {
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Operational Command • Front Desk</p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex lg:items-center gap-3 flex-wrap lg:flex-nowrap w-full lg:w-auto">
+                    <button
+                        onClick={() => navigate('/reception/members/add')}
+                        className="flex-1 lg:flex-none justify-center flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.1em] shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all transform active:scale-95"
+                    >
+                        <UserPlus size={14} />
+                        <span className="whitespace-nowrap">Register Member</span>
+                    </button>
                     <button
                         onClick={() => setShowIncomeModal(true)}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.1em] shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all transform active:scale-95"
+                        className="flex-1 lg:flex-none justify-center flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.1em] shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all transform active:scale-95"
                     >
                         <Plus size={14} />
-                        <span>Add Payment</span>
+                        <span className="whitespace-nowrap">Add Payment</span>
                     </button>
-                    <div className="relative">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <div className="relative flex-1 min-w-[200px] lg:flex-nonw group">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
                         <input
                             type="text"
                             placeholder="Find Member..."
-                            className="pl-10 pr-4 py-2 bg-white border border-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-indigo-100 outline-none w-64 transition-all shadow-sm"
+                            className="w-full lg:w-64 pl-10 pr-4 py-2 bg-white border border-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-indigo-100 outline-none transition-all shadow-sm"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
                     <button
-                        onClick={() => fetchData()}
-                        className="p-2.5 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-indigo-600 transition-colors shadow-sm"
+                        onClick={() => queryClient.refetchQueries({ queryKey: ['dashboard'] })}
+                        className="p-2.5 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-indigo-600 transition-colors shadow-sm shrink-0"
                     >
                         <Activity size={18} className={isRefreshing ? 'animate-pulse' : ''} />
                     </button>
@@ -264,7 +217,7 @@ const ReceptionDashboard: React.FC = () => {
                         </div>
 
                         <div className="divide-y divide-slate-50">
-                            {attendance.length > 0 ? attendance.map((att) => (
+                            {attendance.length > 0 ? attendance.map((att: any) => (
                                 <motion.div
                                     key={att._id}
                                     initial={{ opacity: 0 }}
@@ -325,7 +278,7 @@ const ReceptionDashboard: React.FC = () => {
                         </div>
 
                         <div className="divide-y divide-slate-50">
-                            {pendingApprovals.length > 0 ? pendingApprovals.slice(0, 5).map((member) => (
+                            {pendingApprovals.length > 0 ? pendingApprovals.slice(0, 5).map((member: any) => (
                                 <div key={member._id} className="p-4 flex items-center justify-between hover:bg-slate-50/50 transition-all">
                                     <div className="flex items-center gap-4">
                                         <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 font-bold border border-amber-100">
@@ -339,7 +292,8 @@ const ReceptionDashboard: React.FC = () => {
                                     <div className="flex items-center gap-2">
                                         <button
                                             onClick={() => handleApprove(member._id)}
-                                            className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100 shadow-sm"
+                                            disabled={approveMutation.status === 'pending'}
+                                            className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100 shadow-sm disabled:opacity-50"
                                         >
                                             <CheckCircle2 size={18} />
                                         </button>
@@ -353,79 +307,60 @@ const ReceptionDashboard: React.FC = () => {
                             )}
                         </div>
                     </div>
+
+                    {/* Plan Revenue Breakdown */}
+                    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-emerald-50/20">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-emerald-600 rounded-lg text-white shadow-sm">
+                                    <TrendingUp size={16} />
+                                </div>
+                                <h3 className="font-bold text-slate-800">Plan Revenue Velocity</h3>
+                            </div>
+                            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-white px-3 py-1 rounded-full border border-emerald-100">
+                                This Month
+                            </span>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            {summary?.financials?.incomeBreakdown && summary.financials.incomeBreakdown.length > 0 ? (
+                                <div className="space-y-4">
+                                    {summary.financials.incomeBreakdown.map((item: any, i: number) => {
+                                        const percentage = (item.total / summary.financials.revenueThisMonth) * 100 || 0;
+                                        return (
+                                            <div key={i} className="space-y-1.5">
+                                                <div className="flex justify-between items-end">
+                                                    <span className="text-[11px] font-black text-slate-600 uppercase tracking-tight">{item._id.replace('_', ' ')}</span>
+                                                    <div className="text-right">
+                                                        <span className="text-[11px] font-black text-slate-900 block">Rs. {item.total?.toLocaleString()}</span>
+                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{percentage.toFixed(1)}%</span>
+                                                    </div>
+                                                </div>
+                                                <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${percentage}%` }}
+                                                        className="h-full bg-emerald-500 rounded-full shadow-sm"
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="h-40 flex flex-col items-center justify-center text-center space-y-2">
+                                    <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center text-slate-300">
+                                        <TrendingUp size={20} />
+                                    </div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No revenue data for this cycle</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Right Column */}
                 <div className="space-y-6">
-                    {/* Team Comms */}
-                    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm flex flex-col h-[450px]">
-                        <div className="p-6 border-b border-slate-100 bg-slate-900 text-white rounded-t-3xl">
-                            <div className="flex items-center gap-3 mb-1">
-                                <MessageSquare size={18} />
-                                <h3 className="font-bold">Team Radio</h3>
-                            </div>
-                            <p className="text-[10px] opacity-60 font-medium uppercase tracking-widest">Coordination Hub</p>
-                        </div>
-
-                        <div className="flex-1 p-4 space-y-4 overflow-y-auto custom-scrollbar bg-slate-50/30">
-                            {teamNotes.map((n) => (
-                                <div key={n.id} className={`p-3 rounded-2xl text-xs ${n.user === 'Admin' ? 'bg-indigo-50 border border-indigo-100 text-indigo-900' : 'bg-white border border-slate-100 text-slate-700'} shadow-sm`}>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="font-black uppercase tracking-tighter opacity-50">{n.user}</span>
-                                        <span className="text-[9px] opacity-40 font-bold">{n.time || new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                    </div>
-                                    <p className="font-medium leading-relaxed">{n.text}</p>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="p-4 border-t border-slate-100">
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    placeholder="Report to staff..."
-                                    className="w-full pl-4 pr-12 py-3 bg-white border border-slate-100 rounded-2xl text-xs font-medium focus:ring-2 focus:ring-indigo-100 outline-none shadow-sm"
-                                    value={note}
-                                    onChange={(e) => setNote(e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && handleSendNote()}
-                                />
-                                <button
-                                    onClick={handleSendNote}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all"
-                                >
-                                    <Send size={14} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Quick Records / Status */}
-                    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                            <TrendingUp size={12} className="text-emerald-500" /> Nepal Market Signals
-                        </h4>
-
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center p-3 bg-slate-50 rounded-2xl border border-slate-100/50">
-                                <div className="flex items-center gap-3">
-                                    <Calendar size={16} className="text-slate-400" />
-                                    <span className="text-xs font-bold text-slate-600">Peak Hour (NP)</span>
-                                </div>
-                                <span className="text-xs font-black text-indigo-600">5:30 PM</span>
-                            </div>
-                            <div className="flex justify-between items-center p-3 bg-slate-50 rounded-2xl border border-slate-100/50">
-                                <div className="flex items-center gap-3">
-                                    <UserCheck size={16} className="text-slate-400" />
-                                    <span className="text-xs font-bold text-slate-600">Member Status</span>
-                                </div>
-                                <span className="text-xs font-black text-emerald-500">92% OK</span>
-                            </div>
-                        </div>
-
-                        <button className="w-full py-4 bg-slate-100 text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all shadow-sm border border-slate-200">
-                            Download Daily Ledger
-                        </button>
-                    </div>
                 </div>
             </div>
 
@@ -474,7 +409,7 @@ const ReceptionDashboard: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Fee Category</label>
                                         <div className="relative">
@@ -544,10 +479,10 @@ const ReceptionDashboard: React.FC = () => {
                                     </button>
                                     <button
                                         type="submit"
-                                        disabled={isSavingIncome}
+                                        disabled={addTransactionMutation.status === 'pending'}
                                         className="flex-1 py-4.5 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-200 hover:bg-emerald-700 transition-all active:scale-[0.98] flex items-center justify-center gap-2 group"
                                     >
-                                        {isSavingIncome ? (
+                                        {addTransactionMutation.status === 'pending' ? (
                                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                         ) : (
                                             <>

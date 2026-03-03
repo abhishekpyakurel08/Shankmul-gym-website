@@ -13,8 +13,9 @@ import {
     Search,
     UserX
 } from 'lucide-react';
-import { api } from '../../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
+import { useTodayAttendance, useAbsentMembers } from '../../hooks/useDashboardQueries';
 
 interface LiveEvent {
     id: string;
@@ -28,139 +29,95 @@ interface LiveEvent {
 }
 
 const LiveAttendance: React.FC = () => {
-    const [events, setEvents] = useState<LiveEvent[]>([]);
-    const [absentMembers, setAbsentMembers] = useState<any[]>([]);
+    const queryClient = useQueryClient();
+    const { data: attendanceData } = useTodayAttendance();
+    const { data: absentData } = useAbsentMembers();
+
     const [activeView, setActiveView] = useState<'live' | 'absent'>('live');
     const [isConnected, setIsConnected] = useState(false);
-    const [stats, setStats] = useState({
-        totalToday: 0,
-        activeNow: 0,
-        lateArrivals: 0
-    });
-    const fetchInitialData = async () => {
-        try {
-            const [attRes, absentRes] = await Promise.all([
-                api.get('/attendance/admin/today'),
-                api.get('/attendance/admin/absent')
-            ]);
 
-            if (attRes && attRes.success) {
-                const formattedEvents = attRes.data.map((att: any) => ({
-                    id: att._id,
-                    userId: att.userId?._id,
-                    userName: `${att.userId?.firstName} ${att.userId?.lastName}`,
-                    profileImage: att.userId?.profileImage,
-                    department: att.userId?.department,
-                    time: att.clockIn ? att.clockIn.split('T')[1].split('.')[0] : 'N/A',
-                    type: att.clockOut ? 'clock-out' : 'clock-in',
-                    status: att.status
-                })).reverse();
+    const events: LiveEvent[] = (attendanceData || []).map((att: any) => ({
+        id: att._id,
+        userId: att.userId?._id,
+        userName: `${att.userId?.firstName} ${att.userId?.lastName}`,
+        profileImage: att.userId?.profileImage,
+        department: att.userId?.department,
+        time: att.clockIn ? new Date(att.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'N/A',
+        type: att.clockOut ? 'clock-out' : 'clock-in',
+        status: att.status
+    })).reverse();
 
-                setEvents(formattedEvents);
+    const activeNow = (attendanceData || []).filter((a: any) => !a.clockOut).length;
+    const lateArrivals = (attendanceData || []).filter((a: any) => a.status === 'late').length;
+    const totalToday = (attendanceData || []).length;
 
-                const active = attRes.data.filter((a: any) => !a.clockOut).length;
-                const late = attRes.data.filter((a: any) => a.status === 'late').length;
+    // Debounced invalidation to prevent 429 storm
+    const invalidateTimeoutRef = React.useRef<any>(null);
 
-                setStats({
-                    totalToday: attRes.data.length,
-                    activeNow: active,
-                    lateArrivals: late
-                });
-            }
-
-            if (absentRes && absentRes.success) {
-                setAbsentMembers(absentRes.data || []);
-            }
-        } catch (err) {
-            console.error("Failed to fetch dashboard data:", err);
+    const debouncedInvalidate = React.useCallback(() => {
+        if (invalidateTimeoutRef.current) {
+            clearTimeout(invalidateTimeoutRef.current);
         }
-    };
+        invalidateTimeoutRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['attendance'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            invalidateTimeoutRef.current = null;
+        }, 3000);
+    }, [queryClient]);
 
     useEffect(() => {
-        fetchInitialData();
-
         const token = localStorage.getItem('adminToken');
-        const BACKEND_URL = 'https://shankmul-gym-backend.tecobit.cloud';
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-        const socket = io(BACKEND_URL, {
+        if (!BACKEND_URL) return;
+
+        const liveSocket = io(BACKEND_URL, {
             query: {
                 role: 'admin',
                 token: token
             }
         });
 
-        socket.on('connect', () => setIsConnected(true));
-        socket.on('disconnect', () => setIsConnected(false));
+        liveSocket.on('connect', () => setIsConnected(true));
+        liveSocket.on('disconnect', () => setIsConnected(false));
 
-        socket.on('user_clock_in', (data: any) => {
-            const newEvent: LiveEvent = {
-                id: data.attendanceId,
-                userId: data.userId,
-                userName: data.userName,
-                profileImage: data.profileImage,
-                time: data.time,
-                type: 'clock-in',
-                status: data.status
-            };
-            setEvents(prev => [newEvent, ...prev].slice(0, 50));
-            setStats(s => ({
-                ...s,
-                totalToday: s.totalToday + 1,
-                activeNow: s.activeNow + 1,
-                lateArrivals: data.status === 'late' ? s.lateArrivals + 1 : s.lateArrivals
-            }));
-        });
-
-        socket.on('user_clock_out', (data: any) => {
-            setStats(s => ({ ...s, activeNow: Math.max(0, s.activeNow - 1) }));
-            const logoutEvent: LiveEvent = {
-                id: data.attendanceId + '_out',
-                userId: data.userId,
-                userName: 'Member Clocked Out',
-                time: data.time,
-                type: 'clock-out'
-            };
-            setEvents(prev => [logoutEvent, ...prev].slice(0, 50));
-        });
-
-        socket.on('attendance_deleted', (data: any) => {
-            setEvents(prev => prev.filter(e => e.id !== data.attendanceId));
-            fetchInitialData();
-        });
+        liveSocket.on('user_clock_in', debouncedInvalidate);
+        liveSocket.on('user_clock_out', debouncedInvalidate);
+        liveSocket.on('attendance_deleted', debouncedInvalidate);
 
         return () => {
-            socket.disconnect();
+            liveSocket.disconnect();
         };
-    }, []);
+    }, [debouncedInvalidate]);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Context Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-indigo-600 rounded-lg text-white shadow-lg shadow-indigo-200">
-                        <Activity size={20} />
+                    <div className="p-2.5 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-100 shrink-0">
+                        <Activity size={24} />
                     </div>
                     <div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Live Attendance Monitor</h1>
-                        <div className="flex items-center gap-2 mt-1">
+                        <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-none">Live Monitor</h1>
+                        <div className="flex items-center gap-2 mt-2">
                             <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Real-Time Data Ingestion • Stream 01</p>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Real-Time Ingestion • Node 01</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <div className={`flex items-center gap-2 px-6 py-2 rounded-xl border bg-white shadow-sm transition-all ${isConnected ? 'text-emerald-600 border-emerald-100' : 'text-rose-600 border-rose-100'}`}>
-                        <span className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
-                        <span className="text-[10px] font-black uppercase tracking-widest">{isConnected ? 'System Live' : 'Link Interrupted'}</span>
+                <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto">
+                    <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border bg-white shadow-sm transition-all ${isConnected ? 'text-emerald-600 border-emerald-100' : 'text-rose-600 border-rose-100'}`}>
+                        <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">{isConnected ? 'System Live' : 'Offline'}</span>
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
-                            Global Sync • NP
+                        <span className="hidden sm:block text-[9px] font-black text-slate-400 uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
+                            Global Sync
                         </span>
-                        <div className="w-10 h-10 rounded-2xl bg-indigo-50 border-2 border-white shadow-sm flex items-center justify-center overflow-hidden">
+                        <div className="w-10 h-10 rounded-2xl bg-indigo-600 border-2 border-white shadow-sm flex items-center justify-center overflow-hidden shrink-0">
                             <img src="https://ui-avatars.com/api/?name=Admin&background=4F46E5&color=fff&bold=true" alt="Admin" className="w-full h-full object-cover" />
                         </div>
                     </div>
@@ -170,9 +127,9 @@ const LiveAttendance: React.FC = () => {
             {/* Quick Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
-                    { label: 'Active Personnel On-Site', value: stats.activeNow, icon: <UserCheck size={20} />, color: 'text-indigo-600', bg: 'bg-indigo-50/50' },
-                    { label: 'Session Volume Today', value: stats.totalToday, icon: <Zap size={20} />, color: 'text-amber-500', bg: 'bg-amber-50/50' },
-                    { label: 'Threshold Alerts (Late)', value: stats.lateArrivals, icon: <Clock size={20} />, color: 'text-rose-500', bg: 'bg-rose-50/50' },
+                    { label: 'Active Personnel On-Site', value: activeNow, icon: <UserCheck size={20} />, color: 'text-indigo-600', bg: 'bg-indigo-50/50' },
+                    { label: 'Session Volume Today', value: totalToday, icon: <Zap size={20} />, color: 'text-amber-500', bg: 'bg-amber-50/50' },
+                    { label: 'Threshold Alerts (Late)', value: lateArrivals, icon: <Clock size={20} />, color: 'text-rose-500', bg: 'bg-rose-50/50' },
                 ].map((stat, i) => (
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
@@ -196,8 +153,8 @@ const LiveAttendance: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Live Activity Feed */}
                 <div className="lg:col-span-2 space-y-4">
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col h-[700px]">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col h-[600px] md:h-[700px]">
+                        <div className="p-4 md:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex gap-4">
                                 <button
                                     onClick={() => setActiveView('live')}
@@ -214,12 +171,12 @@ const LiveAttendance: React.FC = () => {
                                     {activeView === 'absent' && <motion.div layoutId="activeViewLine" className="absolute -bottom-1 left-0 right-0 h-0.5 bg-rose-500 rounded-full" />}
                                 </button>
                             </div>
-                            <div className="relative w-48">
+                            <div className="relative w-full sm:w-48">
                                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input
                                     type="text"
                                     placeholder={activeView === 'live' ? "Filter feed..." : "Search absent..."}
-                                    className="w-full pl-9 pr-4 py-1.5 bg-slate-50 border-none rounded-lg text-xs font-medium focus:ring-2 focus:ring-indigo-100"
+                                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border-none rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-100"
                                 />
                             </div>
                         </div>
@@ -246,7 +203,6 @@ const LiveAttendance: React.FC = () => {
                                                 exit={{ opacity: 0, scale: 0.95 }}
                                                 className="group relative"
                                             >
-                                                {/* Existing event card logic */}
                                                 <div className={`p-4 rounded-xl border transition-all duration-300 ${event.type === 'clock-in'
                                                     ? 'bg-white border-slate-100 hover:border-indigo-200 hover:shadow-md'
                                                     : 'bg-slate-50/50 border-transparent opacity-75'
@@ -309,7 +265,7 @@ const LiveAttendance: React.FC = () => {
                                         ))
                                     )
                                 ) : (
-                                    absentMembers.length === 0 ? (
+                                    (absentData || []).length === 0 ? (
                                         <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
                                             <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500">
                                                 <UserCheck size={32} />
@@ -320,9 +276,9 @@ const LiveAttendance: React.FC = () => {
                                             </div>
                                         </div>
                                     ) : (
-                                        absentMembers.map((member) => (
+                                        (absentData || []).map((member: any) => (
                                             <motion.div
-                                                key={member.id}
+                                                key={member._id}
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 className="p-4 rounded-xl border border-slate-100 bg-white hover:border-rose-100 transition-all flex items-center gap-4"

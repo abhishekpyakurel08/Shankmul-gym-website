@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 // API URL
-const BASE_URL = 'https://shankmul-gym-backend.tecobit.cloud/api';
+const BASE_URL = `${import.meta.env.VITE_BACKEND_URL}/api`;
 
 interface ApiResponse<T = any> {
     success: boolean;
@@ -18,6 +18,9 @@ export const api = {
                 'Content-Type': 'application/json'
             }
         });
+        if (response.status === 429) {
+            throw new Error('Too many requests. Please wait a moment and try again.');
+        }
         if (!response.ok) {
             throw new Error(`API error: ${response.status}`);
         }
@@ -33,6 +36,9 @@ export const api = {
             },
             body: JSON.stringify(data)
         });
+        if (response.status === 429) {
+            throw new Error('Too many requests. Please wait a moment and try again.');
+        }
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.message || `API error: ${response.status}`);
@@ -49,6 +55,9 @@ export const api = {
             },
             body: JSON.stringify(data)
         });
+        if (response.status === 429) {
+            throw new Error('Too many requests. Please wait a moment and try again.');
+        }
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.message || `API error: ${response.status}`);
@@ -65,6 +74,9 @@ export const api = {
             },
             body: JSON.stringify(data)
         });
+        if (response.status === 429) {
+            throw new Error('Too many requests. Please wait a moment and try again.');
+        }
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.message || `API error: ${response.status}`);
@@ -80,6 +92,9 @@ export const api = {
                 'Content-Type': 'application/json'
             }
         });
+        if (response.status === 429) {
+            throw new Error('Too many requests. Please wait a moment and try again.');
+        }
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.message || `API error: ${response.status}`);

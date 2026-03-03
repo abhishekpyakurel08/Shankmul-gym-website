@@ -43,7 +43,7 @@ const MotivationCarousel = () => {
                     </div>
                 </div>
 
-                <div className="relative h-48 flex items-center justify-center">
+                <div className="relative min-h-[300px] md:min-h-[200px] flex items-center justify-center">
                     {quotes.map((quote, index) => (
                         <div
                             key={index}

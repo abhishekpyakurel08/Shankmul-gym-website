@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
-import { api } from '../../services/api';
 import { Clock, Calendar, Settings, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { io } from 'socket.io-client';
+import { useQueryClient } from '@tanstack/react-query';
+import { useGymSettings, useGymStatus, useUpdateGymSettings } from '../../hooks/useDashboardQueries';
 
 interface DayHours {
     isOpen: boolean;
@@ -31,11 +33,13 @@ interface GymSettings {
 }
 
 const GymHoursPage: React.FC = () => {
+    const queryClient = useQueryClient();
+    const { data: rawSettings, isLoading: loading } = useGymSettings();
+    const { data: currentStatus } = useGymStatus();
+    const updateMutation = useUpdateGymSettings();
+
     const [settings, setSettings] = useState<GymSettings | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-    const [currentStatus, setCurrentStatus] = useState<{ isOpen: boolean; message: string } | null>(null);
 
     const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     const dayLabels: Record<string, string> = {
@@ -49,52 +53,28 @@ const GymHoursPage: React.FC = () => {
     };
 
     useEffect(() => {
-        fetchSettings();
-        fetchStatus();
+        if (rawSettings) {
+            setSettings(rawSettings);
+        }
+    }, [rawSettings]);
 
+    useEffect(() => {
         const token = localStorage.getItem('adminToken');
-        const BACKEND_URL = 'https://shankmul-gym-backend.tecobit.cloud';
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
         const socket = io(BACKEND_URL, {
             query: { role: 'admin', token }
         });
 
         socket.on('gym_settings_updated', () => {
-            fetchSettings();
-            fetchStatus();
+            queryClient.invalidateQueries({ queryKey: ['gym-settings'] });
+            queryClient.invalidateQueries({ queryKey: ['gym-status'] });
         });
 
-        // Refresh status every minute
-        const interval = setInterval(fetchStatus, 60000);
         return () => {
-            clearInterval(interval);
             socket.disconnect();
         };
-    }, []);
-
-    const fetchSettings = async () => {
-        try {
-            const response = await api.get('/gym-settings');
-            if (response.success) {
-                setSettings(response.data);
-            }
-        } catch (error) {
-            console.error('Error fetching gym settings:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchStatus = async () => {
-        try {
-            const response = await api.get('/gym-settings/status');
-            if (response.success) {
-                setCurrentStatus(response.data);
-            }
-        } catch (error) {
-            console.error('Error fetching gym status:', error);
-        }
-    };
+    }, [queryClient]);
 
     const handleDayToggle = (day: string) => {
         if (!settings) return;
@@ -126,21 +106,15 @@ const GymHoursPage: React.FC = () => {
 
     const handleSave = async () => {
         if (!settings) return;
-        setSaving(true);
-        setMessage(null);
-
-        try {
-            const response = await api.put('/gym-settings', settings);
-            if (response.success) {
+        updateMutation.mutate(settings, {
+            onSuccess: () => {
                 setMessage({ type: 'success', text: 'Gym hours updated successfully!' });
-                fetchStatus(); // Refresh current status
                 setTimeout(() => setMessage(null), 3000);
+            },
+            onError: (error: any) => {
+                setMessage({ type: 'error', text: error.message || 'Failed to update gym hours' });
             }
-        } catch (error: any) {
-            setMessage({ type: 'error', text: error.message || 'Failed to update gym hours' });
-        } finally {
-            setSaving(false);
-        }
+        });
     };
 
     if (loading) {
@@ -160,6 +134,8 @@ const GymHoursPage: React.FC = () => {
             </div>
         );
     }
+
+    const saving = updateMutation.status === 'pending';
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">

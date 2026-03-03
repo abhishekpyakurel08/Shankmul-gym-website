@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { nutritionData } from '@/data/nutritionData';
 import { ArrowLeft, Flame, Dumbbell, Droplets, Utensils } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import SEO from '@/components/SEO';
 
 const NutritionDetail = () => {
     const { id } = useParams();
@@ -21,6 +22,11 @@ const NutritionDetail = () => {
 
     return (
         <div className="pt-24 pb-20 bg-slate-50 min-h-screen">
+            <SEO
+                title={`${meal.name} Plan`}
+                description={`Learn how to prepare ${meal.name}. Detailed nutritional breakdown: ${meal.calories} kcal, ${meal.protein} protein, ${meal.carbs} carbs.`}
+                image={meal.img}
+            />
             {/* Hero Section with Image */}
             <div className="relative h-[400px] w-full">
                 <img

@@ -8,7 +8,7 @@ const AboutSection = () => {
                     <span className="text-brand-orange font-bold tracking-wider uppercase text-sm mb-2 block">Our Story</span>
                     <h2 className="font-display text-4xl font-bold mb-4 text-slate-900">More Than Just A Gym</h2>
                     <p className="text-slate-600">
-                        Shankhamul Health Club was founded with a single mission: to empower the community of Kathmandu through health and fitness.
+                        Shankhamul Health Club & Fitness Centre was founded with a single mission: to empower the community of Kathmandu through health and fitness.
                     </p>
                 </div>
 
@@ -56,18 +56,18 @@ const AboutSection = () => {
                         <img
                             src="https://images.unsplash.com/photo-1549476464-37392f717541?q=80&w=1000&auto=format&fit=crop"
                             alt="Community Workout"
-                            className="relative rounded-3xl shadow-2xl"
+                            className="relative rounded-3xl shadow-2xl w-full"
                         />
                         {/* Stats Card */}
-                        <div className="absolute -bottom-6 -left-6 bg-white border border-slate-100 p-6 rounded-2xl shadow-xl flex gap-6">
+                        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 md:-left-6 md:translate-x-0 bg-white border border-slate-100 p-6 rounded-2xl shadow-xl flex gap-6 z-20 whitespace-nowrap">
                             <div>
-                                <p className="text-3xl font-bold font-display text-brand-orange">5k+</p>
-                                <p className="text-xs text-slate-500">Members</p>
+                                <p className="text-2xl md:text-3xl font-bold font-display text-brand-orange">5k+</p>
+                                <p className="text-[10px] md:text-xs text-slate-500 uppercase font-bold tracking-wider">Members</p>
                             </div>
                             <div className="w-px bg-slate-200" />
                             <div>
-                                <p className="text-3xl font-bold font-display text-brand-blue">20+</p>
-                                <p className="text-xs text-slate-500">Trainers</p>
+                                <p className="text-2xl md:text-3xl font-bold font-display text-brand-blue">20+</p>
+                                <p className="text-[10px] md:text-xs text-slate-500 uppercase font-bold tracking-wider">Trainers</p>
                             </div>
                         </div>
                     </div>
@@ -80,7 +80,7 @@ const AboutSection = () => {
                         <p className="text-slate-600">We invest in the best so you can be your best.</p>
                     </div>
 
-                    <div className="grid md:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         {[
                             { title: "Top Equipment", text: "Premium Technogym & Rogue fitness equipment." },
                             { title: "Expert Trainers", text: "Certified professionals to guide your journey." },

@@ -2,6 +2,7 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Clock, Activity, CheckCircle, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { workoutsData } from '@/data/workoutsData';
+import SEO from '@/components/SEO';
 
 const WorkoutDetail = () => {
     const { id } = useParams();
@@ -20,6 +21,11 @@ const WorkoutDetail = () => {
 
     return (
         <div className="pt-24 pb-20 bg-slate-50 min-h-screen">
+            <SEO
+                title={`${workout.title} Routine`}
+                description={`Try our ${workout.title} workout. A ${workout.duration} session focusing on ${workout.level} foundation. No equipment needed!`}
+                image={workout.image}
+            />
             {/* Immersive Hero Section */}
             <div className="relative h-[450px] w-full overflow-hidden">
                 <img

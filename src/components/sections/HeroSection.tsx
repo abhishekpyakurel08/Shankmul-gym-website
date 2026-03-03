@@ -22,7 +22,7 @@ const HeroSection = () => {
                             <span>#1 Fitness Destination in Kathmandu</span>
                         </div>
 
-                        <h1 className="font-display text-5xl md:text-7xl font-bold leading-tight text-slate-900">
+                        <h1 className="font-display text-4xl sm:text-5xl md:text-7xl font-bold leading-[1.1] text-slate-900">
                             Forge Your <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-orange to-brand-blue">
                                 Ultimate Body
@@ -31,13 +31,13 @@ const HeroSection = () => {
 
                         <p className="text-slate-600 text-lg max-w-xl leading-relaxed">
                             Experience world-class equipment, expert trainers, and a community that pushes you further.
-                            Join Shankhamul Health Club today.
+                            Join Shankhamul Health Club & Fitness Centre today.
                         </p>
 
                         <div className="flex flex-wrap gap-4">
-                            <Link to="/#membership">
+                            <Link to="/#contact">
                                 <Button className="h-14 px-8 text-lg bg-slate-900 text-white hover:bg-brand-orange rounded-full font-bold transition-all hover:scale-105 shadow-xl shadow-slate-900/10">
-                                    Start Free Trial
+                                    Join Now
                                 </Button>
                             </Link>
                             <button
@@ -52,19 +52,23 @@ const HeroSection = () => {
                         </div>
 
                         {/* Info Cards */}
-                        <div className="grid grid-cols-2 gap-4 mt-12">
-                            <div className="bg-white border border-slate-100 p-4 rounded-2xl flex items-start gap-3 shadow-sm hover:shadow-md transition-shadow">
-                                <MapPin className="text-brand-orange shrink-0" />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-12">
+                            <div className="bg-white border border-slate-100 p-6 rounded-2xl flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow">
+                                <div className="w-10 h-10 rounded-xl bg-brand-orange/10 flex items-center justify-center shrink-0">
+                                    <MapPin className="text-brand-orange" size={20} />
+                                </div>
                                 <div>
                                     <h3 className="font-bold font-display text-slate-900">Location</h3>
-                                    <p className="text-xs text-slate-500 mt-1">Shankhamul, Kathmandu<br />Nepal</p>
+                                    <p className="text-sm text-slate-500 mt-1">Shankhamul, Kathmandu<br />Nepal</p>
                                 </div>
                             </div>
-                            <div className="bg-white border border-slate-100 p-4 rounded-2xl flex items-start gap-3 shadow-sm hover:shadow-md transition-shadow">
-                                <Clock className="text-brand-blue shrink-0" />
+                            <div className="bg-white border border-slate-100 p-6 rounded-2xl flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow">
+                                <div className="w-10 h-10 rounded-xl bg-brand-blue/10 flex items-center justify-center shrink-0">
+                                    <Clock className="text-brand-blue" size={20} />
+                                </div>
                                 <div>
                                     <h3 className="font-bold font-display text-slate-900">Opening Hours</h3>
-                                    <p className="text-xs text-slate-500 mt-1">Sun - Fri: 5am - 9pm<br />Sat: 6am - 12pm</p>
+                                    <p className="text-sm text-slate-500 mt-1">Sun - Fri: 5am - 9pm<br />Sat: 6am - 12pm</p>
                                 </div>
                             </div>
                         </div>
