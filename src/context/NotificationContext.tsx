@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 import { api } from '../services/api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export interface Notification {
     id: string;
@@ -29,20 +30,23 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { isAuthenticated, user } = useAuth();
-    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const queryClient = useQueryClient();
+    const [localNotifications, setLocalNotifications] = useState<Notification[]>([]);
     const [isConnected, setIsConnected] = useState(false);
     const [socket, setSocket] = useState<Socket | null>(null);
 
-    const fetchNotifications = useCallback(async () => {
-        try {
-            const response = await api.get('/notifications');
-            if (response.success) {
-                setNotifications(response.data);
-            }
-        } catch (error) {
-            console.error('Failed to fetch notifications:', error);
-        }
-    }, []);
+    const { data: fetchedNotifications } = useQuery({
+        queryKey: ['notifications', 'list', { limit: 50 }],
+        queryFn: async () => {
+            const response = await api.get('/notifications?limit=50');
+            return response.data || [];
+        },
+        enabled: isAuthenticated && !!user,
+        staleTime: 1000 * 60 * 5,
+    });
+
+    // Merge fetched and local notifications
+    const notifications = fetchedNotifications ? [...localNotifications, ...fetchedNotifications] : localNotifications;
 
     useEffect(() => {
         if (!isAuthenticated || !user) {
@@ -50,13 +54,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 socket.disconnect();
                 setSocket(null);
             }
-            setNotifications([]);
+            setLocalNotifications([]);
             return;
         }
 
-        fetchNotifications();
-
-        const BACKEND_URL = 'https://shankmul-gym-backend.tecobit.cloud';
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
         const newSocket = io(BACKEND_URL, {
             query: {
                 userId: user.id,
@@ -69,17 +71,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         newSocket.on('disconnect', () => setIsConnected(false));
 
         newSocket.on('notification', (notif: Notification) => {
-            setNotifications(prev => [notif, ...prev]);
-            // Play a soft notification sound if desired
+            setLocalNotifications(prev => [notif, ...prev]);
             try {
                 const audio = new Audio('/notification-pop.mp3');
                 audio.play().catch(() => { });
             } catch (e) { }
-        });
-
-        // Global admin events that might need global handling
-        newSocket.on('user_clock_in', (data: any) => {
-            console.log('Global Clock In Event:', data);
         });
 
         setSocket(newSocket);
@@ -87,15 +83,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return () => {
             newSocket.disconnect();
         };
-    }, [isAuthenticated, user, fetchNotifications]);
+    }, [isAuthenticated, user]);
 
     const markAsRead = async (id: string) => {
         try {
             const response = await api.put(`/notifications/${id}/read`, {});
             if (response.success) {
-                setNotifications(prev =>
-                    prev.map(n => n._id === id ? { ...n, read: true } : n)
-                );
+                setLocalNotifications(prev => prev.map(n => n._id === id ? { ...n, read: true } : n));
+                queryClient.invalidateQueries({ queryKey: ['notifications'] });
             }
         } catch (error) {
             console.error('Failed to mark as read:', error);
@@ -106,9 +101,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         try {
             const response = await api.put('/notifications/read-all', {});
             if (response.success) {
-                setNotifications(prev =>
-                    prev.map(n => ({ ...n, read: true }))
-                );
+                setLocalNotifications(prev => prev.map(n => ({ ...n, read: true })));
+                queryClient.invalidateQueries({ queryKey: ['notifications'] });
             }
         } catch (error) {
             console.error('Failed to mark all as read:', error);
@@ -119,7 +113,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         try {
             const response = await api.delete(`/notifications/${id}`);
             if (response.success) {
-                setNotifications(prev => prev.filter(n => n._id !== id));
+                setLocalNotifications(prev => prev.filter(n => n._id !== id));
+                queryClient.invalidateQueries({ queryKey: ['notifications'] });
             }
         } catch (error) {
             console.error('Failed to delete notification:', error);
@@ -127,7 +122,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
 
     const addLocalNotification = (notif: any) => {
-        setNotifications(prev => [notif, ...prev]);
+        setLocalNotifications(prev => [notif, ...prev]);
     };
 
     const unreadCount = notifications.filter(n => !n.read).length;

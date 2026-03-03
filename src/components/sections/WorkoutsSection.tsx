@@ -87,7 +87,7 @@ const WorkoutsSection = () => {
                     <div className="relative z-10">
                         <h2 className="text-3xl font-bold font-display mb-4 text-slate-900">Not sure where to begin?</h2>
                         <p className="text-slate-600 max-w-xl mx-auto mb-8">
-                            Our trainers can create a personalized 4-week roadmap just for you. Completely free for new members.
+                            Our trainers can create a personalized 4-week roadmap just for you. Completely free for new starters.
                         </p>
                         <Button className="bg-brand-orange text-white hover:bg-orange-600 px-8 h-12 rounded-full text-lg shadow-lg shadow-orange-200">
                             Get My Free Plan

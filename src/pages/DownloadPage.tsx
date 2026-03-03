@@ -12,6 +12,7 @@ import {
   Smartphone,
   FileText
 } from 'lucide-react';
+import SEO from '@/components/SEO';
 
 const DownloadPage: React.FC = () => {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -41,7 +42,7 @@ const DownloadPage: React.FC = () => {
   const faqs = [
     {
       question: "Is the app free to download?",
-      answer: "Yes! The Shankmul Gym app is free to download on both iOS and Android. Some premium features may require a gym membership."
+      answer: "Yes! The Shankhamul Health Club & Fitness Centre app is free to download on both iOS and Android for all our registered users."
     },
     {
       question: "Can I book personal training sessions?",
@@ -55,6 +56,10 @@ const DownloadPage: React.FC = () => {
 
   return (
     <div className="font-sans text-slate-900 bg-white">
+      <SEO
+        title="Download Our Fitness App"
+        description="Take your training anywhere with the Shankhamul Health Club app. Track workouts, manage your schedule, and access premium nutrition guides."
+      />
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-20 pb-20 lg:pt-32 lg:pb-28 bg-slate-900">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-purple-900/20 to-slate-900 pointer-events-none"></div>
@@ -238,7 +243,7 @@ const DownloadPage: React.FC = () => {
         <div className="container mx-auto px-6">
           <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to transform your body?</h2>
           <p className="text-indigo-100 text-lg mb-8 max-w-2xl mx-auto">
-            Join thousands of members who are tracking their fitness journey with Shankmul Gym.
+            Join thousands of members who are tracking their fitness journey with Shankhamul Health Club & Fitness Centre.
           </p>
           <button className="bg-white text-indigo-600 font-bold px-8 py-4 rounded-xl shadow-xl hover:shadow-2xl hover:bg-slate-50 transition transform hover:-translate-y-1">
             Download App Now

@@ -7,13 +7,17 @@ import TrainersSection from '@/components/sections/TrainersSection';
 import ScheduleSection from '@/components/sections/ScheduleSection';
 import GallerySection from '@/components/sections/GallerySection';
 import WorkoutsSection from '@/components/sections/WorkoutsSection';
-import MembershipSection from '@/components/sections/MembershipSection';
 import MotivationSection from '@/components/sections/MotivationSection';
 import ContactSection from '@/components/sections/ContactSection';
+import SEO from '@/components/SEO';
 
 const HomePage = () => {
     return (
         <div id="home" className="bg-white">
+            <SEO
+                title="Forge Your Ultimate Body | Kathmandu's Premier Gym"
+                description="Join Shankhamul Health Club & Fitness Centre, the leading fitness destination in Kathmandu. Expert trainers, premium equipment, and results-driven programs."
+            />
             {/* Hero Section */}
             <HeroSection />
 
@@ -40,9 +44,6 @@ const HomePage = () => {
 
             {/* Beginner Workouts Section */}
             <WorkoutsSection />
-
-            {/* Membership Section */}
-            <MembershipSection />
 
             {/* Motivation Section */}
             <MotivationSection />

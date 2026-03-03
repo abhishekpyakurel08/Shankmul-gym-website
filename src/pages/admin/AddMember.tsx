@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../../services/api';
 import {
     UserPlus,
     ArrowLeft,
@@ -12,9 +11,16 @@ import {
     Phone
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useRegisterMember } from '../../hooks/useDashboardQueries';
+import { useAuthStore } from '../../store/useAuthStore';
 
 const AddMember: React.FC = () => {
     const navigate = useNavigate();
+    const { user } = useAuthStore();
+    const registerMutation = useRegisterMember();
+
+    const parentPath = user?.role === 'reception' ? '/reception' : '/admin';
+
     const [formData, setFormData] = useState({
         employeeId: '',
         firstName: '',
@@ -24,72 +30,88 @@ const AddMember: React.FC = () => {
         password: 'gym' + Math.floor(1000 + Math.random() * 9000),
         department: 'Operations',
         requestedPlan: '1-month',
-        admissionFee: 0,
-        monthlyFee: 0,
+        admissionFee: 1000,
+        monthlyFee: 2500,
         paymentMethod: 'Cash',
         shift: 'both',
-
         gender: 'male',
         age: 20
     });
-    const [loading, setLoading] = useState(false);
+
     const [success, setSuccess] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: ['age', 'admissionFee', 'monthlyFee'].includes(name) ? Number(value) : value
-        }));
-    };
 
+        setFormData(prev => {
+            const newState = {
+                ...prev,
+                [name]: ['age', 'admissionFee', 'monthlyFee'].includes(name) ? Number(value) : value
+            };
+
+            // Auto-fill fees when participation plan is changed
+            if (name === 'requestedPlan') {
+                const planFees: Record<string, { admission: number; monthly: number }> = {
+                    'admission': { admission: 1000, monthly: 0 },
+                    '1-month': { admission: 1000, monthly: 2500 },
+                    '3-month': { admission: 1000, monthly: 6000 },
+                    '6-month': { admission: 1000, monthly: 11000 },
+                    '1-year': { admission: 1000, monthly: 20000 }
+                };
+
+                const fees = planFees[value];
+                if (fees) {
+                    newState.admissionFee = fees.admission;
+                    newState.monthlyFee = fees.monthly;
+                }
+            }
+
+            return newState;
+        });
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
-
-        try {
-            const response = await api.post('/auth/register', formData);
-            if (response && response.success) {
+        registerMutation.mutate(formData, {
+            onSuccess: () => {
                 setSuccess(true);
-                setTimeout(() => navigate('/admin/members'), 1500);
-            } else {
-                throw new Error(response.message || 'Registration failed');
+                setTimeout(() => navigate(`${parentPath}/members`), 1500);
+            },
+            onError: (error: any) => {
+                console.error('Registration Error:', error);
+                alert(error.message || 'Error creating member. Please try again.');
             }
-        } catch (error: any) {
-            console.error('Registration Error:', error);
-            alert(error.message || 'Error creating member. Please try again.');
-        } finally {
-            setLoading(false);
-        }
+        });
     };
+
+    const isLoading = registerMutation.status === 'pending';
 
     return (
         <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Header Area */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-2">
                 <div className="flex items-center gap-4">
                     <button
-                        onClick={() => navigate('/admin/members')}
-                        className="p-3 bg-white hover:bg-slate-50 rounded-2xl border border-slate-100 shadow-sm transition-all text-slate-400 hover:text-indigo-600 group"
+                        onClick={() => navigate(`${parentPath}/members`)}
+                        className="p-3 bg-white hover:bg-slate-50 rounded-2xl border border-slate-100 shadow-sm transition-all text-slate-400 hover:text-indigo-600 group shrink-0"
                     >
                         <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
                     </button>
                     <div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Onboard New Member</h1>
-                        <div className="flex items-center gap-2 mt-1">
-                            <div className="w-2 h-2 rounded-full bg-[#EE4B6A]"></div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Growth Infrastructure • Registration Terminal</p>
+                        <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-none">Register Member</h1>
+                        <div className="flex items-center gap-2 mt-2">
+                            <div className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></div>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Registration Terminal • Secure</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
-                        Global Index • EN
+                <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm whitespace-nowrap">
+                        Node: {parentPath.replace('/', '').toUpperCase()}
                     </span>
-                    <div className="w-10 h-10 rounded-2xl bg-slate-100 border-2 border-white shadow-sm flex items-center justify-center overflow-hidden">
-                        <img src="https://ui-avatars.com/api/?name=Admin&background=4F46E5&color=fff&bold=true" alt="Admin" className="w-full h-full object-cover" />
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-600 border-2 border-white shadow-sm flex items-center justify-center overflow-hidden shrink-0">
+                        <img src={`https://ui-avatars.com/api/?name=${user?.firstName || 'User'}&background=4F46E5&color=fff&bold=true`} alt="User" className="w-full h-full object-cover" />
                     </div>
                 </div>
             </div>
@@ -116,7 +138,7 @@ const AddMember: React.FC = () => {
                 <form onSubmit={handleSubmit} className="bg-white rounded-[2rem] border border-slate-100 shadow-2xl shadow-slate-200/40 overflow-hidden divide-y divide-slate-50">
 
                     {/* section: Personal Info */}
-                    <div className="p-8 md:p-12 space-y-8">
+                    <div className="p-6 md:p-12 space-y-8">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
                                 <User size={20} />
@@ -124,7 +146,7 @@ const AddMember: React.FC = () => {
                             <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Personal Identity Data</h3>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Member Reference ID</label>
                                 <input
@@ -137,7 +159,7 @@ const AddMember: React.FC = () => {
                                     className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-100 transition-all font-bold text-slate-900 placeholder:text-slate-300"
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Given Name</label>
                                     <input
@@ -240,7 +262,7 @@ const AddMember: React.FC = () => {
                     </div>
 
                     {/* section: Membership Info */}
-                    <div className="p-8 md:p-12 space-y-8 bg-slate-50/30">
+                    <div className="p-6 md:p-12 space-y-8 bg-slate-50/30">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
                                 <CreditCard size={20} />
@@ -338,25 +360,25 @@ const AddMember: React.FC = () => {
                     </div>
 
                     {/* Submit Area */}
-                    <div className="p-8 md:p-12 flex flex-col md:flex-row gap-4 bg-white">
+                    <div className="p-6 md:p-12 flex flex-col md:flex-row gap-4 bg-white">
                         <button
                             type="button"
-                            onClick={() => navigate('/admin/members')}
-                            className="flex-1 px-8 py-4 bg-slate-50 text-slate-400 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-100"
+                            onClick={() => navigate(`${parentPath}/members`)}
+                            className="w-full md:flex-1 order-2 md:order-1 px-8 py-4 bg-slate-50 text-slate-400 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-100"
                         >
                             Abort Process
                         </button>
                         <button
                             type="submit"
-                            disabled={loading}
-                            className={`flex-[2] flex items-center justify-center gap-3 px-12 py-4 bg-[#EE4B6A] text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-rose-100 hover:bg-[#D43D5B] transition-all transform active:scale-95 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={isLoading}
+                            className={`w-full md:flex-[2] order-1 md:order-2 flex items-center justify-center gap-3 px-12 py-4 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all transform active:scale-95 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                            {loading ? (
+                            {isLoading ? (
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                             ) : (
                                 <>
                                     <UserPlus size={20} />
-                                    <span>Forge New Member Access</span>
+                                    <span>Sync Profile Data</span>
                                 </>
                             )}
                         </button>
@@ -368,4 +390,3 @@ const AddMember: React.FC = () => {
 };
 
 export default AddMember;
-

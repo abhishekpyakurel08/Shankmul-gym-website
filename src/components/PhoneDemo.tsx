@@ -15,13 +15,15 @@ export const PhoneDemo = () => {
             <div className="rounded-[2rem] overflow-hidden w-full h-full bg-slate-50 relative flex flex-col pt-10">
 
                 {/* Header */}
-                <div className="px-6 pb-4 flex justify-between items-center bg-white shadow-sm z-10">
-                    <div>
-                        <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Good Morning</p>
-                        <h3 className="text-xl font-bold text-slate-900">Alex</h3>
-                    </div>
-                    <div className="h-10 w-10 bg-slate-200 rounded-full overflow-hidden border-2 border-slate-100">
-                        <div className="w-full h-full flex items-center justify-center bg-indigo-100 text-indigo-600 font-bold">A</div>
+                <div className="px-6 py-3 flex justify-between items-center bg-white shadow-sm z-10">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg overflow-hidden border border-slate-100 shadow-sm">
+                            <img src="/shankhamul-logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">Welcome back</p>
+                            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Alex J.</h3>
+                        </div>
                     </div>
                 </div>
 

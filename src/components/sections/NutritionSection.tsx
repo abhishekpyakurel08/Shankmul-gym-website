@@ -70,11 +70,11 @@ const NutritionSection = () => {
                             {/* Overlay Chart - Simplified Visual */}
                             <div className="absolute inset-0 bg-gradient-to-tr from-brand-orange/20 to-transparent pointer-events-none" />
                         </div>
-                        {/* Floating Labels */}
-                        <div className="absolute top-1/2 left-0 -translate-x-1/2 bg-white border border-slate-100 shadow-xl px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2">
+                        {/* Floating Labels - Hidden on mobile for cleaner look */}
+                        <div className="absolute top-1/2 left-0 -translate-x-1/2 bg-white border border-slate-100 shadow-xl px-4 py-2 rounded-full text-sm font-bold hidden md:flex items-center gap-2">
                             <div className="w-3 h-3 bg-red-500 rounded-full" /> Protein
                         </div>
-                        <div className="absolute bottom-10 right-0 translate-x-1/4 bg-white border border-slate-100 shadow-xl px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2">
+                        <div className="absolute bottom-10 right-0 translate-x-1/4 bg-white border border-slate-100 shadow-xl px-4 py-2 rounded-full text-sm font-bold hidden md:flex items-center gap-2">
                             <div className="w-3 h-3 bg-green-500 rounded-full" /> Veggies
                         </div>
                     </div>
@@ -83,7 +83,7 @@ const NutritionSection = () => {
                 {/* Sample Meal Plan */}
                 <div className="mb-24">
                     <h2 className="text-3xl font-bold font-display text-slate-900 text-center mb-12">Sample Daily Plan</h2>
-                    <div className="grid md:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         {nutritionData.map((meal) => (
                             <Link to={`/nutrition/${meal.id}`} key={meal.id} className="group relative bg-white rounded-3xl overflow-hidden hover:-translate-y-2 transition-all duration-300 shadow-lg hover:shadow-xl border border-slate-100 flex flex-col h-full">
                                 <div className="h-48 overflow-hidden relative shrink-0">

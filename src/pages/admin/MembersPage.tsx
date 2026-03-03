@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../../services/api';
 import {
     Search,
     Mail,
@@ -15,7 +14,6 @@ import {
     Users,
     CheckCircle2,
     Calendar,
-    Edit3,
     Trash2,
     Settings,
     ShieldAlert,
@@ -24,6 +22,19 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { io } from 'socket.io-client';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+    useUsers,
+    useTodayAttendance,
+    useClockIn,
+    useClockOut,
+    useApproveMembership,
+    useSendCustomNotification,
+    useToggleUserStatus,
+    useDeleteUser,
+    useMemberAttendanceHistory,
+    useDeleteAttendance
+} from '../../hooks/useDashboardQueries';
 import DataErrorState from '../../components/admin/DataErrorState';
 
 interface Member {
@@ -46,56 +57,72 @@ interface Member {
         status: 'active' | 'expired' | 'pending';
         monthlyDayCount: number;
     };
+    lastActivity?: string;
     createdAt: string;
 }
 
 const MembersPage: React.FC = () => {
     const navigate = useNavigate();
-    const [members, setMembers] = useState<Member[]>([]);
-    const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
+
+    // Queries
+    const { data: members = [], isLoading: isUsersLoading, isError: isUsersError, refetch: refetchUsers } = useUsers();
+    const { data: attendanceData = [] } = useTodayAttendance();
+
+    // Mutations
+    const clockInMutation = useClockIn();
+    const clockOutMutation = useClockOut();
+    const approveMutation = useApproveMembership();
+    const notifyMutation = useSendCustomNotification();
+    const toggleStatusMutation = useToggleUserStatus();
+    const deleteUserMutation = useDeleteUser();
+
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [selectedMember, setSelectedMember] = useState<Member | null>(null);
-    const [error, setError] = useState(false);
-    const [todayAttendance, setTodayAttendance] = useState<Record<string, { _id: string, clockIn: string, clockOut?: string }>>({});
-    const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+    // Map today's attendance for quick lookup
+    const attendanceMap = React.useMemo(() => {
+        const map: Record<string, any> = {};
+        attendanceData.forEach((att: any) => {
+            if (att.userId && att.userId._id) {
+                map[att.userId._id] = att;
+            } else if (typeof att.userId === 'string') {
+                map[att.userId] = att;
+            }
+        });
+        return map;
+    }, [attendanceData]);
 
     useEffect(() => {
-        fetchMembers();
-        fetchTodayAttendance();
-
         const token = localStorage.getItem('adminToken');
-        const BACKEND_URL = 'https://shankmul-gym-backend.tecobit.cloud';
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
         const socket = io(BACKEND_URL, {
             query: { role: 'admin', token }
         });
 
-        const handleRealTimeUpdate = () => {
-            fetchMembers();
-            fetchTodayAttendance();
+        const invalidateData = () => {
+            queryClient.invalidateQueries({ queryKey: ['users'] });
+            queryClient.invalidateQueries({ queryKey: ['attendance'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
         };
 
-        const handleAttendanceUpdate = () => {
-            fetchTodayAttendance();
-        };
-
-        socket.on('new_member_registered', handleRealTimeUpdate);
-        socket.on('membership_approved', handleRealTimeUpdate);
-        socket.on('membership_request', handleRealTimeUpdate);
-        socket.on('user_clock_in', handleAttendanceUpdate);
-        socket.on('user_clock_out', handleAttendanceUpdate);
-        socket.on('attendance_deleted', handleAttendanceUpdate);
-        socket.on('stats_updated', handleRealTimeUpdate);
+        socket.on('new_member_registered', invalidateData);
+        socket.on('membership_approved', invalidateData);
+        socket.on('membership_request', invalidateData);
+        socket.on('user_clock_in', invalidateData);
+        socket.on('user_clock_out', invalidateData);
+        socket.on('attendance_deleted', invalidateData);
+        socket.on('stats_updated', invalidateData);
 
         return () => {
             socket.disconnect();
         };
-    }, []);
+    }, [queryClient]);
 
-    useEffect(() => {
-        let results = members;
+    const filteredMembers = React.useMemo(() => {
+        let results = members as Member[];
 
         if (searchTerm) {
             results = results.filter(m =>
@@ -119,81 +146,24 @@ const MembersPage: React.FC = () => {
             }
         }
 
-        setFilteredMembers(results);
+        return results;
     }, [searchTerm, statusFilter, members]);
 
-    const fetchMembers = async () => {
-        setLoading(true);
-        setError(false);
-        try {
-            const response = await api.get('/auth/users');
-            if (response && response.success) {
-                setMembers(response.data || []);
-            }
-        } catch (error) {
-            console.error('API Error:', error);
-            setError(true);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchTodayAttendance = async () => {
-        try {
-            const response = await api.get('/attendance/admin/today');
-            if (response && response.success) {
-                const map: Record<string, any> = {};
-                response.data.forEach((att: any) => {
-                    if (att.userId && att.userId._id) {
-                        map[att.userId._id] = att;
-                    }
-                });
-                setTodayAttendance(map);
-            }
-        } catch (error) {
-            console.error('Failed to fetch attendance:', error);
-        }
-    };
-
     const handleQuickAttendance = async (e: React.MouseEvent, userId: string) => {
-        e.stopPropagation(); // Prevent row click
+        e.stopPropagation();
 
-        const currentRecord = todayAttendance[userId];
+        const currentRecord = attendanceMap[userId];
         const isClockedIn = !!currentRecord && !currentRecord.clockOut;
 
-        // If already clocked out, usually we don't allow re-entry in same day in strict mode, 
-        // but admin might want to correct it. For now, if clocked out, we disable or show "Done".
         if (currentRecord && currentRecord.clockOut) {
             alert("User has already completed attendance for today.");
             return;
         }
 
-        setActionLoading(userId);
-        try {
-            if (isClockedIn) {
-                // Clock Out
-                const res = await api.post('/attendance/admin/clock-out', { userId });
-                if (res.success) {
-                    // Update local state
-                    setTodayAttendance(prev => ({
-                        ...prev,
-                        [userId]: { ...prev[userId], clockOut: new Date().toISOString() }
-                    }));
-                }
-            } else {
-                // Clock In
-                const res = await api.post('/attendance/admin/clock-in', { userId });
-                if (res.success) {
-                    setTodayAttendance(prev => ({
-                        ...prev,
-                        [userId]: res.data
-                    }));
-                }
-            }
-        } catch (err: any) {
-            alert(err.message || "Action failed");
-        } finally {
-            setActionLoading(null);
+        if (isClockedIn) {
+            clockOutMutation.mutate(userId);
+        } else {
+            clockInMutation.mutate(userId);
         }
     };
 
@@ -215,34 +185,51 @@ const MembersPage: React.FC = () => {
         });
     };
 
+    const formatRelativeTime = (dateStr?: string) => {
+        if (!dateStr) return 'Never';
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffMins = Math.floor(diffMs / (60 * 1000));
+
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `${diffHours}h ago`;
+
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays < 7) return `${diffDays}d ago`;
+
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+
     const handleAction = async (userId: string, action: 'approve' | 'renew' | 'remind' | 'toggle-status' | 'delete-user') => {
         try {
             if (action === 'remind') {
-                await api.post('/notifications/selected', {
+                notifyMutation.mutate({
                     userIds: [userId],
                     title: '⏰ Time to Renew!',
                     message: 'Your membership is expiring soon. Visit the counter today to renew!'
+                }, {
+                    onSuccess: () => alert('Reminder sent!')
                 });
-                alert('Reminder sent!');
             } else if (action === 'approve') {
-                await api.put(`/auth/membership/approve/${userId}`, {});
-                alert('Membership approved!');
-                fetchMembers();
+                approveMutation.mutate(userId, {
+                    onSuccess: () => alert('Membership approved!')
+                });
             } else if (action === 'toggle-status') {
-                const res = await api.patch(`/admin/user/${userId}/toggle-status`, {}); // Using string patch for now if api.patch not fully typed, but using any is fine
-                if (res.success) {
-                    alert('User status updated');
-                    fetchMembers();
-                    if (selectedMember && selectedMember._id === userId) {
-                        setSelectedMember({ ...selectedMember, isActive: !selectedMember.isActive });
-                    }
-                }
+                toggleStatusMutation.mutate(userId, {
+                    onSuccess: () => alert('User status updated')
+                });
             } else if (action === 'delete-user') {
                 if (window.confirm('Are you sure you want to PERMANENTLY delete this user? This cannot be undone.')) {
-                    await api.delete(`/admin/user/${userId}`);
-                    alert('User deleted permanently');
-                    fetchMembers();
-                    setSelectedMember(null);
+                    deleteUserMutation.mutate(userId, {
+                        onSuccess: () => {
+                            alert('User deleted permanently');
+                            setSelectedMember(null);
+                        }
+                    });
                 }
             }
         } catch (err) {
@@ -253,7 +240,7 @@ const MembersPage: React.FC = () => {
 
     const handleExportMembers = () => {
         const token = localStorage.getItem('adminToken');
-        const BACKEND_URL = 'https://shankmul-gym-backend.tecobit.cloud';
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
         window.open(`${BACKEND_URL}/api/admin/export-members?token=${token}`, '_blank');
     };
 
@@ -293,13 +280,13 @@ const MembersPage: React.FC = () => {
             </div>
 
             {/* Premium Stats Row */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
                 {[
                     { label: 'Total Registrations', value: members.length, icon: <Users size={16} />, color: 'text-indigo-600', bg: 'bg-indigo-50/50' },
-                    { label: 'Active Sessions', value: members.filter(m => m.membership?.status === 'active').length, icon: <CheckCircle2 size={16} />, color: 'text-emerald-600', bg: 'bg-emerald-50/50' },
+                    { label: 'Active Sessions', value: members.filter((m: Member) => m.membership?.status === 'active').length, icon: <CheckCircle2 size={16} />, color: 'text-emerald-600', bg: 'bg-emerald-50/50' },
                     {
                         label: 'Expiring Soon',
-                        value: members.filter(m => {
+                        value: members.filter((m: Member) => {
                             if (!m.membership?.expiryDate || m.membership.status !== 'active') return false;
                             const expiryDate = new Date(m.membership.expiryDate);
                             const now = new Date();
@@ -310,21 +297,21 @@ const MembersPage: React.FC = () => {
                         color: 'text-amber-600',
                         bg: 'bg-amber-50/50'
                     },
-                    { label: 'Expired Records', value: members.filter(m => m.membership?.status === 'expired').length, icon: <XCircle size={16} />, color: 'text-rose-600', bg: 'bg-rose-50/50' },
-                    { label: 'Pending Approval', value: members.filter(m => m.membership?.status === 'pending').length, icon: <Clock size={16} />, color: 'text-slate-600', bg: 'bg-slate-50/50' },
+                    { label: 'Expired Records', value: members.filter((m: Member) => m.membership?.status === 'expired').length, icon: <XCircle size={16} />, color: 'text-rose-600', bg: 'bg-rose-50/50' },
+                    { label: 'Pending Approval', value: members.filter((m: Member) => m.membership?.status === 'pending').length, icon: <Clock size={16} />, color: 'text-slate-600', bg: 'bg-slate-50/50', className: 'col-span-2 md:col-span-1' },
                 ].map((stat, i) => (
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.05 }}
                         key={i}
-                        className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between group hover:border-indigo-100 transition-colors"
+                        className={`bg-white p-4 md:p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between group hover:border-indigo-100 transition-colors ${stat.className || ''}`}
                     >
                         <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">{stat.label}</p>
-                            <p className="text-2xl font-black text-slate-900 mt-2">{stat.value}</p>
+                            <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">{stat.label}</p>
+                            <p className="text-xl md:text-2xl font-black text-slate-900 mt-2">{stat.value}</p>
                         </div>
-                        <div className={`p-3 rounded-xl ${stat.bg} ${stat.color} group-hover:scale-110 transition-transform`}>
+                        <div className={`p-2.5 md:p-3 rounded-xl ${stat.bg} ${stat.color} group-hover:scale-110 transition-transform`}>
                             {stat.icon}
                         </div>
                     </motion.div>
@@ -369,15 +356,15 @@ const MembersPage: React.FC = () => {
                     </div>
                 </div>
 
-                {loading ? (
+                {isUsersLoading ? (
                     <div className="flex flex-col items-center justify-center py-32 space-y-4">
                         <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Synchronizing Directory...</p>
                     </div>
-                ) : error ? (
+                ) : isUsersError ? (
                     <div className="py-20">
                         <DataErrorState
-                            onRetry={fetchMembers}
+                            onRetry={refetchUsers}
                             title="Directory Unreachable"
                             message="We are unable to synchronize the member directory with the authentication servers."
                         />
@@ -392,13 +379,15 @@ const MembersPage: React.FC = () => {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left">
+                        {/* Desktop View Table */}
+                        <table className="w-full text-left hidden md:table">
                             <thead>
                                 <tr className="bg-slate-50/30">
                                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">ID</th>
                                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Member Info</th>
                                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Plan & Shift</th>
-                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Expiraton</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Expiration</th>
+                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Activity</th>
                                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Status</th>
                                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Quick Actions</th>
                                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Details</th>
@@ -463,6 +452,18 @@ const MembersPage: React.FC = () => {
                                             })()}
                                         </td>
                                         <td className="px-8 py-6">
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-bold text-slate-700">
+                                                    {formatRelativeTime(member.lastActivity)}
+                                                </span>
+                                                {member.lastActivity && (
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase mt-0.5 whitespace-nowrap">
+                                                        {new Date(member.lastActivity).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-6">
                                             <div className="flex justify-center">
                                                 {(() => {
                                                     const expiryDate = member.membership?.expiryDate ? new Date(member.membership.expiryDate) : null;
@@ -483,10 +484,10 @@ const MembersPage: React.FC = () => {
                                         </td>
                                         <td className="px-8 py-6 text-center">
                                             {(() => {
-                                                const att = todayAttendance[member._id];
+                                                const att = attendanceMap[member._id];
                                                 const isClockedIn = att && !att.clockOut;
                                                 const isDone = att && att.clockOut;
-                                                const isLoading = actionLoading === member._id;
+                                                const isActionLoading = (clockInMutation.status === 'pending' || clockOutMutation.status === 'pending') && (clockInMutation.variables === member._id || clockOutMutation.variables === member._id);
 
                                                 if (isDone) {
                                                     return (
@@ -499,13 +500,13 @@ const MembersPage: React.FC = () => {
                                                 return (
                                                     <button
                                                         onClick={(e) => handleQuickAttendance(e, member._id)}
-                                                        disabled={isLoading}
+                                                        disabled={isActionLoading}
                                                         className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-2 mx-auto shadow-sm ${isClockedIn
                                                             ? 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-100'
                                                             : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100'
-                                                            } ${isLoading ? 'opacity-70 cursor-wait' : ''}`}
+                                                            } ${isActionLoading ? 'opacity-70 cursor-wait' : ''}`}
                                                     >
-                                                        {isLoading ? (
+                                                        {isActionLoading ? (
                                                             <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                                         ) : isClockedIn ? (
                                                             <><LogOut size={12} /> Check Out</>
@@ -525,6 +526,81 @@ const MembersPage: React.FC = () => {
                                 ))}
                             </tbody>
                         </table>
+
+                        {/* Mobile View Card List */}
+                        <div className="md:hidden divide-y divide-slate-100">
+                            {filteredMembers.map((member) => (
+                                <div
+                                    key={member._id}
+                                    className="p-6 space-y-4 active:bg-slate-50 transition-colors"
+                                    onClick={() => setSelectedMember(member)}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                                                {member.firstName.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-black text-slate-900 leading-none">{member.firstName} {member.lastName}</p>
+                                                <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">{member.employeeId || '#UNSET'}</p>
+                                            </div>
+                                        </div>
+                                        {(() => {
+                                            const status = member.membership?.status || 'active';
+                                            return (
+                                                <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${getStatusStyles(status)}`}>
+                                                    {status}
+                                                </span>
+                                            );
+                                        })()}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Plan & Shift</p>
+                                            <p className="text-xs font-bold text-slate-700">{member.membership?.plan || 'Direct Entry'} • {member.shift}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Expiration</p>
+                                            <p className="text-xs font-bold text-slate-700 text-right">{formatDate(member.membership?.expiryDate)}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {(() => {
+                                            const att = attendanceMap[member._id];
+                                            const isClockedIn = att && !att.clockOut;
+                                            const isDone = att && att.clockOut;
+                                            const isActionLoading = (clockInMutation.status === 'pending' || clockOutMutation.status === 'pending') && (clockInMutation.variables === member._id || clockOutMutation.variables === member._id);
+
+                                            if (isDone) {
+                                                return (
+                                                    <div className="flex-1 py-2.5 bg-slate-50 text-slate-400 rounded-xl text-[10px] font-black uppercase text-center border border-slate-100">
+                                                        Today's Attendance Done
+                                                    </div>
+                                                );
+                                            }
+
+                                            return (
+                                                <button
+                                                    onClick={(e) => handleQuickAttendance(e, member._id)}
+                                                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all shadow-sm flex items-center justify-center gap-2 ${isClockedIn ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white'}`}
+                                                >
+                                                    {isActionLoading ? (
+                                                        <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                    ) : isClockedIn ? (
+                                                        <><LogOut size={12} /> Check Out</>
+                                                    ) : (
+                                                        <><LogIn size={12} /> Check In</>
+                                                    )}
+                                                </button>
+                                            );
+                                        })()}
+                                        <button className="px-4 py-2.5 bg-slate-50 text-slate-400 rounded-xl border border-slate-100">
+                                            <ChevronRight size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>
@@ -535,7 +611,6 @@ const MembersPage: React.FC = () => {
                     onClose={() => setSelectedMember(null)}
                     onAction={handleAction}
                     formatDate={formatDate}
-                    onExport={handleExportMembers}
                 />
             )}
         </div>
@@ -548,56 +623,47 @@ const MemberDetailModal: React.FC<{
     onClose: () => void;
     onAction: (id: string, action: any) => void;
     formatDate: (d?: string) => string;
-    onExport: () => void;
-}> = ({ member, onClose, onAction, formatDate, onExport }) => {
+}> = ({ member, onClose, onAction, formatDate }) => {
+    const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<'profile' | 'attendance'>('profile');
-    const [attendance, setAttendance] = useState<any[]>([]);
-    const [loadingData, setLoadingData] = useState(false);
-    const [showUpgradeForm, setShowUpgradeForm] = useState(false);
-    const [showManualLog, setShowManualLog] = useState(false);
 
-    const fetchMemberDetails = useCallback(async () => {
-        setLoadingData(true);
-        try {
-            const attRes = await api.get(`/attendance/history/${member._id}`);
-            if (attRes.success) {
-                const logs = attRes.data as any[];
+    // Dynamic Queries for History
+    const { data: rawHistory = [], isLoading: loadingData } = useMemberAttendanceHistory(member._id);
+    const deleteAttendanceMutation = useDeleteAttendance();
 
-                // --- ADDED: ABSENT LOG GENERATION (Last 7 Days) ---
-                const completeLogs: any[] = [];
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
+    const attendance = React.useMemo(() => {
+        const completeLogs: any[] = [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-                for (let i = 0; i < 7; i++) {
-                    const d = new Date(today);
-                    d.setDate(d.getDate() - i);
+        // Get member's account creation date
+        const memberCreatedDate = new Date(member.createdAt);
+        memberCreatedDate.setHours(0, 0, 0, 0);
 
-                    const existing = logs.find(l => new Date(l.date).toDateString() === d.toDateString());
-                    if (existing) {
-                        completeLogs.push(existing);
-                    } else {
-                        // Don't show absent for Saturday
-                        if (d.getDay() !== 6) {
-                            completeLogs.push({
-                                date: d.toISOString(),
-                                status: 'absent',
-                                isManual: false
-                            });
-                        }
+        const logs = rawHistory as any[];
+
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+
+            // Only process dates on or after the member's creation date
+            if (d >= memberCreatedDate) {
+                const existing = logs.find(l => new Date(l.date).toDateString() === d.toDateString());
+                if (existing) {
+                    completeLogs.push(existing);
+                } else {
+                    if (d.getDay() !== 6) { // Skip Saturday
+                        completeLogs.push({
+                            date: d.toISOString(),
+                            status: 'absent',
+                            isManual: false
+                        });
                     }
                 }
-                setAttendance(completeLogs);
             }
-        } catch (err) {
-            console.error("Fetch error:", err);
-        } finally {
-            setLoadingData(false);
         }
-    }, [member._id]);
-
-    useEffect(() => {
-        fetchMemberDetails();
-    }, [fetchMemberDetails]);
+        return completeLogs;
+    }, [rawHistory, member.createdAt]);
 
     const formatTime = (dateStr?: string) => {
         if (!dateStr) return '--:--';
@@ -606,13 +672,11 @@ const MemberDetailModal: React.FC<{
 
     const handleDeleteAttendance = async (id: string) => {
         if (window.confirm('Delete this attendance record?')) {
-            try {
-                await api.delete(`/attendance/admin/${id}`);
-                fetchMemberDetails();
-            } catch (err) {
-                console.error(err);
-                alert('Deletion failed');
-            }
+            deleteAttendanceMutation.mutate(id, {
+                onSuccess: () => {
+                    queryClient.invalidateQueries({ queryKey: ['attendance', 'history', member._id] });
+                }
+            });
         }
     };
 
@@ -691,9 +755,22 @@ const MemberDetailModal: React.FC<{
                                             <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">Monthly Commitment</p>
                                             <div className="flex items-baseline gap-2 mt-2"><span className="text-5xl font-black">{member.membership?.monthlyDayCount || 0}</span><span className="text-white/60 text-sm font-bold">/ 26 DAYS</span></div>
                                         </div>
-                                        <div className="relative z-10 flex gap-3 mt-4">
-                                            <button onClick={() => setShowUpgradeForm(true)} className="px-6 py-3 border border-white/30 rounded-2xl font-black text-[10px] uppercase hover:bg-white/10 transition-all">Upgrade Plan</button>
-                                            <button onClick={() => onAction(member._id, 'remind')} className="px-6 py-3 bg-white text-[#545BE5] rounded-2xl font-black text-[10px] uppercase hover:bg-slate-50 transition-all shadow-lg">Renew Reminder</button>
+                                        <div className="relative z-10 flex flex-wrap gap-3 mt-4">
+                                            {member.membership?.status === 'pending' && (
+                                                <button
+                                                    onClick={() => onAction(member._id, 'approve')}
+                                                    className="px-6 py-3 bg-emerald-500 text-white rounded-2xl font-black text-[10px] uppercase hover:bg-emerald-600 transition-all shadow-lg flex items-center gap-2"
+                                                >
+                                                    <CheckCircle2 size={14} />
+                                                    Approve Membership
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => onAction(member._id, 'remind')}
+                                                className="px-6 py-3 bg-white text-[#545BE5] rounded-2xl font-black text-[10px] uppercase hover:bg-slate-50 transition-all shadow-lg"
+                                            >
+                                                Renew Reminder
+                                            </button>
                                         </div>
                                         <Activity size={160} className="absolute -right-8 -bottom-10 text-white/5 -rotate-12 translate-y-4" />
                                     </div>
@@ -727,12 +804,6 @@ const MemberDetailModal: React.FC<{
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between">
                                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Calendar size={14} className="text-indigo-500" /> Recent Activity (7 Days)</h4>
-                                        <button
-                                            onClick={() => setShowManualLog(true)}
-                                            className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase hover:bg-indigo-100 transition-all flex items-center gap-2"
-                                        >
-                                            <Edit3 size={12} /> Manual Log
-                                        </button>
                                     </div>
                                     <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
                                         <table className="w-full text-left">
@@ -751,7 +822,6 @@ const MemberDetailModal: React.FC<{
                                                             <td className="px-8 py-4">
                                                                 <div className="flex flex-col">
                                                                     <span className="text-xs font-bold text-slate-700">{formatDate(att.date)}</span>
-                                                                    {att.status === 'absent' && <span className="text-[8px] font-black text-rose-400 uppercase tracking-tighter mt-0.5">Missing Record</span>}
                                                                 </div>
                                                             </td>
                                                             <td className="px-8 py-4">
@@ -798,224 +868,7 @@ const MemberDetailModal: React.FC<{
                         </div>
                     )}
                 </div>
-
-                {/* Footer */}
-                <div className="p-8 border-t border-slate-100 bg-white flex items-center justify-between">
-                    <button onClick={onExport} className="flex items-center gap-2 px-6 py-3 border border-slate-200 rounded-2xl text-[11px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all shadow-sm"><ArrowUpRight size={14} className="text-indigo-500" /> Export Data</button>
-                    <div className="flex gap-4">
-                        {member.membership?.status === 'pending' ? (
-                            <button onClick={() => onAction(member._id, 'approve')} className="px-8 py-3.5 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all">Approve Access</button>
-                        ) : (
-                            <button onClick={() => onAction(member._id, 'remind')} className="px-8 py-3.5 bg-[#4F46E5] text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-[#4338CA] transition-all">Send Reminder</button>
-                        )}
-                        <button onClick={onClose} className="px-8 py-3.5 border border-slate-200 rounded-2xl text-[11px] font-black uppercase tracking-widest text-slate-900 hover:bg-slate-50 transition-all">Close Profile</button>
-                    </div>
-                </div>
-
-                {showUpgradeForm && <UpgradeMembershipModal member={member} onClose={() => setShowUpgradeForm(false)} onSuccess={() => { setShowUpgradeForm(false); onAction(member._id, 'approve'); }} />}
-                {showManualLog && (
-                    <ManualAttendanceModal
-                        userId={member._id}
-                        onClose={() => setShowManualLog(false)}
-                        onSuccess={() => { setShowManualLog(false); fetchMemberDetails(); }}
-                    />
-                )}
             </motion.div>
-        </div>
-    );
-};
-
-// --- SUB-COMPONENT: MANUAL ATTENDANCE MODAL ---
-const ManualAttendanceModal: React.FC<{
-    userId: string;
-    onClose: () => void;
-    onSuccess: () => void;
-}> = ({ userId, onClose, onSuccess }) => {
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-    const [clockIn, setClockIn] = useState('09:00');
-    const [clockOut, setClockOut] = useState('11:00');
-    const [status, setStatus] = useState<'on-time' | 'late' | 'half-day'>('on-time');
-    const [submitting, setSubmitting] = useState(false);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setSubmitting(true);
-        try {
-            const res = await api.post('/attendance/admin/manual', {
-                userId,
-                date,
-                clockIn: `${date}T${clockIn}:00`,
-                clockOut: `${date}T${clockOut}:00`,
-                status
-            });
-            if (res.success) onSuccess();
-        } catch (err) {
-            console.error(err);
-            alert("Logging failed");
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8 space-y-6">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Manual Log</h3>
-                        <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Admin Intervention Override</p>
-                    </div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-50 rounded-xl transition-all"><XCircle size={24} className="text-slate-400" /></button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Effective Date</label>
-                        <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 outline-none" required />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Clock In</label>
-                            <input type="time" value={clockIn} onChange={e => setClockIn(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 outline-none" required />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Clock Out</label>
-                            <input type="time" value={clockOut} onChange={e => setClockOut(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 outline-none" required />
-                        </div>
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Override Status</label>
-                        <select value={status} onChange={e => setStatus(e.target.value as any)} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 outline-none">
-                            <option value="on-time">On Time</option>
-                            <option value="late">Late Arrival</option>
-                            <option value="half-day">Half Day</option>
-                        </select>
-                    </div>
-
-                    <div className="pt-4 flex gap-4">
-                        <button type="button" onClick={onClose} className="flex-1 px-6 py-4 bg-slate-50 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-slate-100">Cancel</button>
-                        <button type="submit" disabled={submitting} className="flex-2 px-10 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:opacity-50">
-                            {submitting ? 'Archiving...' : 'Save Record'}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
-
-
-// --- SUB-COMPONENT: UPGRADE MEMBERSHIP MODAL ---
-const UpgradeMembershipModal: React.FC<{
-    member: Member;
-    onClose: () => void;
-    onSuccess: () => void;
-}> = ({ member, onClose, onSuccess }) => {
-    const [plan, setPlan] = useState(member.membership?.plan || '1-month');
-    const [paymentMethod, setPaymentMethod] = useState('Cash');
-    const [submitting, setSubmitting] = useState(false);
-
-    const plans = [
-        { id: '1-month', label: '1 Month Starter', price: 3000 },
-        { id: '3-month', label: '3 Months Value', price: 8000 },
-        { id: '6-month', label: '6 Months Pro', price: 15000 },
-        { id: '1-year', label: '1 Year Legend', price: 25000 },
-    ];
-
-    const handleUpgrade = async () => {
-        setSubmitting(true);
-        try {
-            const selectedPlan = plans.find(p => p.id === plan);
-            if (!selectedPlan) return;
-
-            // Instead of direct update, we record a transaction which triggers the update
-            const res = await api.post('/finance/transactions/add', {
-                userId: member._id,
-                category: 'income',
-                type: 'subscription',
-                amount: selectedPlan.price,
-                method: paymentMethod,
-                plan: plan,
-                description: `Membership Upgrade: ${selectedPlan.label}`,
-                date: new Date()
-            });
-
-            if (res.success) {
-                alert('Upgrade successful & Transaction recorded!');
-                onSuccess();
-            }
-        } catch (err) {
-            console.error(err);
-            alert("Upgrade failed");
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="bg-white w-full max-md rounded-[2.5rem] shadow-2xl p-8 space-y-6">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Upgrade Account</h3>
-                        <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Status: {member.membership?.status || 'New'}</p>
-                    </div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-50 rounded-xl transition-all"><XCircle size={24} className="text-slate-400" /></button>
-                </div>
-
-                <div className="space-y-4">
-                    <p className="text-sm font-bold text-slate-600">Select new membership duration:</p>
-                    <div className="grid grid-cols-1 gap-3">
-                        {plans.map(p => (
-                            <button
-                                key={p.id}
-                                onClick={() => setPlan(p.id)}
-                                className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${plan === p.id
-                                    ? 'border-indigo-600 bg-indigo-50/50 shadow-inner'
-                                    : 'border-slate-100 bg-slate-50 hover:border-slate-200'
-                                    }`}
-                            >
-                                <div className="text-left">
-                                    <p className="text-sm font-black text-slate-800">{p.label}</p>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Immediate Activation</p>
-                                </div>
-                                <span className={`text-xs font-black ${plan === p.id ? 'text-indigo-600' : 'text-slate-400'}`}>Rs. {p.price.toLocaleString()}</span>
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className="pt-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Payment Method</label>
-                        <div className="grid grid-cols-3 gap-2 mt-1">
-                            {['Cash', 'eSewa', 'Bank'].map(m => (
-                                <button
-                                    key={m}
-                                    onClick={() => setPaymentMethod(m)}
-                                    className={`py-2 text-[10px] font-bold rounded-xl border transition-all ${paymentMethod === m ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}
-                                >
-                                    {m}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="pt-4 flex gap-4">
-                    <button
-                        onClick={onClose}
-                        className="flex-1 px-8 py-4 bg-slate-50 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-slate-100"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handleUpgrade}
-                        disabled={submitting}
-                        className="flex-2 px-12 py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all disabled:opacity-50"
-                    >
-                        {submitting ? 'Upgrading...' : 'Confirm Upgrade'}
-                    </button>
-                </div>
-            </div>
         </div>
     );
 };

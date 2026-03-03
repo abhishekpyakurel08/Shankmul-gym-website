@@ -14,117 +14,91 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { io } from 'socket.io-client';
-import { api } from '../../services/api';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+    useNotifications,
+    useUsers,
+    useSendBroadcastNotification,
+    useSendCustomNotification
+} from '../../hooks/useDashboardQueries';
 import DataErrorState from '../../components/admin/DataErrorState';
 
-interface NotificationLog {
-    _id: string;
-    id: string; // Display ID like #7456
-    title: string;
-    message: string;
-    type: string;
-    activeFrom: string;
-    activeTo: string;
-    status: 'active' | 'inactive' | 'expired';
-}
-
 const Notifications: React.FC = () => {
-    // List/Table state
-    const [history, setHistory] = useState<NotificationLog[]>([]);
-    const [members, setMembers] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
+    const queryClient = useQueryClient();
+    const { data: rawHistory = [], isLoading: loading, isError: error, refetch: refetchHistory } = useNotifications();
+    const { data: members = [] } = useUsers();
+
+    const sendBroadcastMutation = useSendBroadcastNotification();
+    const sendCustomMutation = useSendCustomNotification();
+
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
     const [activeTab, setActiveTab] = useState<'campaigns' | 'autopilot'>('campaigns');
 
-    // Form state (in modal)
     const [title, setTitle] = useState('');
     const [message, setMessage] = useState('');
-    const [submitting, setSubmitting] = useState(false);
     const [success, setSuccess] = useState(false);
     const [mode, setMode] = useState<'broadcast' | 'selected'>('broadcast');
     const [userSearchTerm, setUserSearchTerm] = useState('');
     const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
 
-    const fetchHistory = async () => {
-        setLoading(true);
-        setError(false);
-        try {
-            const response = await api.get('/notifications?limit=50');
-            if (response && response.success) {
-                const formatted = (response.data || []).map((n: any) => ({
-                    _id: n._id,
-                    id: `#${n._id.substring(n._id.length - 4).toUpperCase()}`,
-                    title: n.title,
-                    message: n.message,
-                    type: n.type || 'system',
-                    activeFrom: new Date(n.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
-                    activeTo: '-', // One-time notifications don't have an end date usually
-                    status: 'active'
-                }));
-                setHistory(formatted);
-            }
-        } catch (err) {
-            console.error('Failed to fetch notification logs:', err);
-            setError(true);
-        } finally {
-            setLoading(false);
-        }
-    };
+    const history = rawHistory.map((n: any) => ({
+        _id: n._id,
+        id: `#${n._id.substring(n._id.length - 4).toUpperCase()}`,
+        title: n.title,
+        message: n.message,
+        type: n.type || 'system',
+        activeFrom: new Date(n.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+        activeTo: '-',
+        status: 'active'
+    }));
 
-    const fetchMembers = async () => {
-        try {
-            const response = await api.get('/auth/users');
-            if (response && response.success) {
-                setMembers(response.data || []);
-            }
-        } catch (err) {
-            console.error('Failed to fetch members:', err);
+    const invalidateTimeoutRef = React.useRef<any>(null);
+
+    const debouncedInvalidate = React.useCallback(() => {
+        if (invalidateTimeoutRef.current) {
+            clearTimeout(invalidateTimeoutRef.current);
         }
-    };
+        invalidateTimeoutRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
+            queryClient.invalidateQueries({ queryKey: ['users'] });
+            invalidateTimeoutRef.current = null;
+        }, 3000);
+    }, [queryClient]);
 
     useEffect(() => {
-        fetchHistory();
-        fetchMembers();
-
         const token = localStorage.getItem('adminToken');
-        const BACKEND_URL = 'https://shankmul-gym-backend.tecobit.cloud';
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-        const socket = io(BACKEND_URL, {
+        if (!BACKEND_URL) return;
+
+        const notificationSocket = io(BACKEND_URL, {
             query: { role: 'admin', token }
         });
 
-        socket.on('stats_updated', (data: any) => {
+        notificationSocket.on('stats_updated', (data: any) => {
             if (data.type === 'notification' || data.type === 'membership') {
-                fetchHistory();
-                fetchMembers();
+                debouncedInvalidate();
             }
         });
 
-        socket.on('membership_approved', () => fetchMembers());
-        socket.on('new_member_registered', () => fetchMembers());
+        notificationSocket.on('membership_approved', debouncedInvalidate);
+        notificationSocket.on('new_member_registered', debouncedInvalidate);
 
         return () => {
-            socket.disconnect();
+            notificationSocket.disconnect();
         };
-    }, []);
+    }, [debouncedInvalidate]);
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
-        setSubmitting(true);
-        try {
-            const endpoint = mode === 'broadcast' ? '/notifications/broadcast' : '/notifications/selected';
-            const payload = mode === 'broadcast'
-                ? { title, message }
-                : {
-                    title,
-                    message,
-                    userIds: Array.from(selectedUserIds)
-                };
+        const mutation = mode === 'broadcast' ? sendBroadcastMutation : sendCustomMutation;
+        const payload = mode === 'broadcast'
+            ? { title, message }
+            : { title, message, userIds: Array.from(selectedUserIds) };
 
-            const response = await api.post(endpoint, payload);
-            if (response && response.success) {
+        mutation.mutate(payload as any, {
+            onSuccess: () => {
                 setSuccess(true);
                 setTitle('');
                 setMessage('');
@@ -132,14 +106,13 @@ const Notifications: React.FC = () => {
                 setTimeout(() => {
                     setSuccess(false);
                     setShowAddModal(false);
-                    fetchHistory();
+                    queryClient.invalidateQueries({ queryKey: ['notifications'] });
                 }, 2000);
+            },
+            onError: (err: any) => {
+                alert(err.message || 'Failed to send notification');
             }
-        } catch (error: any) {
-            alert(error.message || 'Failed to send notification');
-        } finally {
-            setSubmitting(false);
-        }
+        });
     };
 
     const toggleUserSelection = (userId: string) => {
@@ -152,7 +125,6 @@ const Notifications: React.FC = () => {
         setSelectedUserIds(newSelection);
     };
 
-    // Helper to get icon based on notification type
     const getNotificationTypeIcon = (type: string) => {
         switch (type) {
             case 'daily_greeting': return '☀️';
@@ -185,7 +157,9 @@ const Notifications: React.FC = () => {
         </div>
     );
 
-    if (error) return <DataErrorState onRetry={fetchHistory} />;
+    if (error) return <DataErrorState onRetry={() => refetchHistory()} />;
+
+    const submitting = sendBroadcastMutation.status === 'pending' || sendCustomMutation.status === 'pending';
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -353,7 +327,7 @@ const Notifications: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50/50">
-                                {history.filter(h => h.title.toLowerCase().includes(searchTerm.toLowerCase())).map((item) => (
+                                {history.filter((h: any) => h.title.toLowerCase().includes(searchTerm.toLowerCase())).map((item: any) => (
                                     <tr key={item._id} className="group hover:bg-slate-50/50 transition-colors">
                                         <td className="px-8 py-5">
                                             <span className="text-indigo-500 text-xs font-black tracking-tight">{item.id}</span>
@@ -495,8 +469,8 @@ const Notifications: React.FC = () => {
                                                     </div>
                                                     <div className="max-h-40 overflow-y-auto space-y-1 px-1 custom-scrollbar">
                                                         {members
-                                                            .filter(m => `${m.firstName} ${m.lastName}`.toLowerCase().includes(userSearchTerm.toLowerCase()))
-                                                            .map(user => (
+                                                            .filter((m: any) => `${m.firstName} ${m.lastName}`.toLowerCase().includes(userSearchTerm.toLowerCase()))
+                                                            .map((user: any) => (
                                                                 <div
                                                                     key={user._id}
                                                                     onClick={() => toggleUserSelection(user._id)}

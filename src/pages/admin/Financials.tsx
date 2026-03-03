@@ -14,9 +14,10 @@ import {
     X,
     Activity
 } from 'lucide-react';
-import { api } from '../../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { io } from 'socket.io-client';
+import { useQueryClient } from '@tanstack/react-query';
+import { useTransactions, useDailyStats, useAddTransaction } from '../../hooks/useDashboardQueries';
 
 interface Transaction {
     _id: string;
@@ -30,8 +31,11 @@ interface Transaction {
 }
 
 const Financials: React.FC = () => {
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
-    const [summary, setSummary] = useState({ income: 0, expense: 0, net: 0 });
+    const queryClient = useQueryClient();
+    const { data: transactions = [], isLoading: isTxLoading } = useTransactions();
+    const { data: summary } = useDailyStats();
+    const addTxMutation = useAddTransaction();
+
     const [showAddModal, setShowAddModal] = useState(false);
     const [newTx, setNewTx] = useState({
         category: 'income',
@@ -41,72 +45,50 @@ const Financials: React.FC = () => {
         description: '',
         userId: ''
     });
-    const [loading, setLoading] = useState(true);
-
-    const fetchFinData = async () => {
-        setLoading(true);
-        try {
-            const [txRes, statsRes] = await Promise.all([
-                api.get('/finance/transactions'),
-                api.get('/finance/stats/daily')
-            ]);
-
-            if (txRes && txRes.success) {
-                setTransactions(txRes.data || []);
-            }
-
-            if (statsRes && statsRes.success) {
-                setSummary(statsRes.data);
-            }
-        } catch (err) {
-            console.error("Finance Fetch Error:", err);
-            setTransactions([
-                { _id: '1', userName: 'System Sync', category: 'income', type: 'subscription', amount: 5000, method: 'eSewa', date: new Date().toISOString(), description: 'Visual Demo Mode Active' }
-            ]);
-            setSummary({ income: 5000, expense: 0, net: 5000 });
-        } finally {
-            setLoading(false);
-        }
-    };
 
     useEffect(() => {
-        fetchFinData();
-
         const token = localStorage.getItem('adminToken');
-        const BACKEND_URL = 'https://shankmul-gym-backend.tecobit.cloud';
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
         const socket = io(BACKEND_URL, {
             query: { role: 'admin', token }
         });
 
-        socket.on('transaction_added', () => fetchFinData());
+        const invalidateFinance = () => {
+            queryClient.invalidateQueries({ queryKey: ['finance'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboard', 'summary'] });
+        };
+
+        socket.on('transaction_added', invalidateFinance);
         socket.on('stats_updated', (data: any) => {
-            if (data.type === 'finance') fetchFinData();
+            if (data.type === 'finance') invalidateFinance();
         });
 
         return () => {
             socket.disconnect();
         };
-    }, []);
+    }, [queryClient]);
 
     const handleAddTx = async (e: React.FormEvent) => {
         e.preventDefault();
-        try {
-            const res = await api.post('/finance/transactions/add', newTx);
-            if (res && res.success) {
-                setTransactions([res.data, ...transactions]);
+        addTxMutation.mutate(newTx, {
+            onSuccess: () => {
                 setShowAddModal(false);
-                fetchFinData();
+                setNewTx({
+                    category: 'income',
+                    type: 'subscription',
+                    amount: 0,
+                    method: 'Cash',
+                    description: '',
+                    userId: ''
+                });
             }
-        } catch (err) {
-            console.error(err);
-        }
+        });
     };
 
     const handleExport = () => {
         const token = localStorage.getItem('adminToken');
-        const BACKEND_URL = 'https://shankmul-gym-backend.tecobit.cloud';
-        // Open the export URL in a new tab which triggers a download
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
         window.open(`${BACKEND_URL}/api/finance/export?token=${token}`, '_blank');
     };
 
@@ -146,7 +128,8 @@ const Financials: React.FC = () => {
             </div>
 
             {/* Summary Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Summary Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
                     {
                         label: 'Gross Daily Income',
@@ -185,7 +168,7 @@ const Financials: React.FC = () => {
                     >
                         <div className="flex-1">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">{stat.label}</p>
-                            <p className="text-2xl font-black text-slate-900 mt-2">{stat.value}</p>
+                            <p className="text-xl md:text-2xl font-black text-slate-900 mt-2">{stat.value}</p>
                             <div className={`mt-2 flex items-center gap-1 text-[9px] font-black uppercase tracking-tighter ${stat.up ? 'text-emerald-600' : 'text-rose-600'}`}>
                                 {stat.up ? <ArrowUpCircle size={10} /> : <ArrowDownCircle size={10} />}
                                 {stat.trend}
@@ -218,57 +201,93 @@ const Financials: React.FC = () => {
                 </div>
 
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead>
-                            <tr className="bg-slate-50/30">
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Txn ID</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">User / Description</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Type</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Method</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Amount</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {transactions.map((tx) => (
-                                <tr key={tx._id} className="group hover:bg-slate-50/50 transition-all cursor-pointer">
-                                    <td className="px-8 py-6">
-                                        <span className="text-emerald-500 text-xs font-black tracking-tighter">#{tx._id.substring(tx._id.length - 4).toUpperCase()}</span>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-black text-slate-900 leading-none group-hover:text-indigo-600 transition-colors uppercase">{tx.userName}</span>
-                                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2">{new Date(tx.date).toLocaleDateString()}</span>
+                    {isTxLoading ? (
+                        <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                            <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading Transactions...</p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Desktop Table */}
+                            <table className="w-full text-left hidden md:table">
+                                <thead>
+                                    <tr className="bg-slate-50/30">
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Txn ID</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">User / Description</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Type</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Method</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Amount</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {transactions.map((tx: Transaction) => (
+                                        <tr key={tx._id} className="group hover:bg-slate-50/50 transition-all cursor-pointer">
+                                            <td className="px-8 py-6">
+                                                <span className="text-emerald-500 text-xs font-black tracking-tighter">#{tx._id.substring(tx._id.length - 4).toUpperCase()}</span>
+                                            </td>
+                                            <td className="px-8 py-6">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-black text-slate-900 leading-none group-hover:text-indigo-600 transition-colors uppercase">{tx.userName}</span>
+                                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2">{new Date(tx.date).toLocaleDateString()}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-6 text-center">
+                                                <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border ${tx.category === 'income' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                                                    {tx.type}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-6">
+                                                <div className="flex items-center gap-2 text-slate-600">
+                                                    <CreditCard size={14} className="text-slate-300" />
+                                                    <span className="text-[11px] font-black text-slate-700 uppercase">{tx.method}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-6">
+                                                <span className={`text-sm font-black tracking-tight ${tx.category === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                    {tx.category === 'income' ? '+' : '-'} Rs. {tx.amount.toLocaleString()}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-6 text-right">
+                                                <button className="p-2 text-slate-300 group-hover:text-slate-600 transition-colors">
+                                                    <MoreVertical size={18} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+
+                            {/* Mobile List View */}
+                            <div className="md:hidden divide-y divide-slate-50">
+                                {transactions.map((tx: Transaction) => (
+                                    <div key={tx._id} className="p-6 space-y-4 active:bg-slate-50 transition-colors">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <p className="text-xs font-black text-slate-900 uppercase tracking-tight">{tx.userName}</p>
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">{new Date(tx.date).toLocaleDateString()}</p>
+                                            </div>
+                                            <span className={`text-sm font-black ${tx.category === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                {tx.category === 'income' ? '+' : '-'} Rs. {tx.amount.toLocaleString()}
+                                            </span>
                                         </div>
-                                    </td>
-                                    <td className="px-8 py-6 text-center">
-                                        <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border ${tx.category === 'income' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
-                                            {tx.type}
-                                        </span>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-2 text-slate-600">
-                                            <CreditCard size={14} className="text-slate-300" />
-                                            <span className="text-[11px] font-black text-slate-700 uppercase">{tx.method}</span>
+                                        <div className="flex items-center justify-between">
+                                            <span className={`px-3 py-1 rounded-lg text-items text-[8px] font-black uppercase tracking-widest border ${tx.category === 'income' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                                                {tx.type}
+                                            </span>
+                                            <div className="flex items-center gap-1.5">
+                                                <CreditCard size={12} className="text-slate-300" />
+                                                <span className="text-[10px] font-black text-slate-500 uppercase">{tx.method}</span>
+                                            </div>
                                         </div>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                        <span className={`text-sm font-black tracking-tight ${tx.category === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                            {tx.category === 'income' ? '+' : '-'} Rs. {tx.amount.toLocaleString()}
-                                        </span>
-                                    </td>
-                                    <td className="px-8 py-6 text-right">
-                                        <button className="p-2 text-slate-300 group-hover:text-slate-600 transition-colors">
-                                            <MoreVertical size={18} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </div>
 
-                {transactions.length === 0 && !loading && (
+                {transactions.length === 0 && !isTxLoading && (
                     <div className="py-20 flex flex-col items-center justify-center bg-slate-50/30">
                         <Receipt size={40} className="text-slate-200 mb-4" />
                         <p className="text-xs font-black text-slate-400 uppercase tracking-widest">No entries found for this period</p>
@@ -357,6 +376,7 @@ const Financials: React.FC = () => {
                                             type="number"
                                             className="w-full px-4 py-2.5 bg-slate-50 border-transparent rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-100"
                                             placeholder="0"
+                                            value={newTx.amount === 0 ? '' : newTx.amount}
                                             onChange={(e) => setNewTx({ ...newTx, amount: Number(e.target.value) })}
                                         />
                                     </div>
@@ -368,6 +388,7 @@ const Financials: React.FC = () => {
                                         rows={2}
                                         className="w-full px-4 py-2.5 bg-slate-50 border-transparent rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-100"
                                         placeholder="Note..."
+                                        value={newTx.description}
                                         onChange={(e) => setNewTx({ ...newTx, description: e.target.value })}
                                     />
                                 </div>
@@ -382,8 +403,10 @@ const Financials: React.FC = () => {
                                     </button>
                                     <button
                                         type="submit"
-                                        className="flex-1 px-6 py-3 bg-[#EE4B6A] text-white rounded-xl text-xs font-bold shadow-lg shadow-rose-100 hover:bg-[#D43D5B] transition-all"
+                                        disabled={addTxMutation.status === 'pending'}
+                                        className="flex-1 px-6 py-3 bg-[#EE4B6A] text-white rounded-xl text-xs font-bold shadow-lg shadow-rose-100 hover:bg-[#D43D5B] transition-all flex items-center justify-center gap-2"
                                     >
+                                        {addTxMutation.status === 'pending' && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                                         Save Record
                                     </button>
                                 </div>

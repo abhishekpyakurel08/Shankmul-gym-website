@@ -1,6 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { api } from '../../services/api';
+import { useAuthStore } from '../../store/useAuthStore';
+import {
+    useProfile,
+    useUpdateProfile
+} from '../../hooks/useDashboardQueries';
 import {
     User,
     Mail,
@@ -17,9 +21,10 @@ import {
 import { motion } from 'framer-motion';
 
 const AdminProfile: React.FC = () => {
-    const { user, login } = useAuth();
-    const [loading, setLoading] = useState(false);
-    const [profileData, setProfileData] = useState<any>(null);
+    const { user, login } = useAuthStore();
+    const { data: profileData, isLoading: loadingProfile } = useProfile();
+    const updateMutation = useUpdateProfile();
+
     const [updateStatus, setUpdateStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [formData, setFormData] = useState({
         firstName: '',
@@ -32,26 +37,16 @@ const AdminProfile: React.FC = () => {
     });
 
     useEffect(() => {
-        fetchProfile();
-    }, []);
-
-    const fetchProfile = async () => {
-        try {
-            const res = await api.get('/auth/me');
-            if (res.success) {
-                setProfileData(res.data);
-                setFormData(prev => ({
-                    ...prev,
-                    firstName: res.data.firstName || '',
-                    lastName: res.data.lastName || '',
-                    email: res.data.email || '',
-                    phoneNumber: res.data.phoneNumber || '',
-                }));
-            }
-        } catch (err) {
-            console.error('Failed to fetch profile:', err);
+        if (profileData) {
+            setFormData(prev => ({
+                ...prev,
+                firstName: profileData.firstName || '',
+                lastName: profileData.lastName || '',
+                email: profileData.email || '',
+                phoneNumber: profileData.phoneNumber || '',
+            }));
         }
-    };
+    }, [profileData]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -60,19 +55,15 @@ const AdminProfile: React.FC = () => {
 
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
         setUpdateStatus('idle');
 
-        try {
-            const res = await api.put('/auth/me', {
-                firstName: formData.firstName,
-                lastName: formData.lastName,
-                phoneNumber: formData.phoneNumber
-            });
-
-            if (res.success) {
+        updateMutation.mutate({
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            phoneNumber: formData.phoneNumber
+        }, {
+            onSuccess: () => {
                 setUpdateStatus('success');
-                // Update local storage/context if needed
                 if (user) {
                     login(localStorage.getItem('adminToken') || '', {
                         ...user,
@@ -81,14 +72,37 @@ const AdminProfile: React.FC = () => {
                     });
                 }
                 setTimeout(() => setUpdateStatus('idle'), 3000);
+            },
+            onError: (err: any) => {
+                alert(err.message || 'Update failed');
+                setUpdateStatus('error');
             }
-        } catch (err: any) {
-            alert(err.message || 'Update failed');
-            setUpdateStatus('error');
-        } finally {
-            setLoading(false);
-        }
+        });
     };
+
+    const handleUpdatePassword = async () => {
+        if (!formData.newPassword) return alert('Enter a new password first');
+        updateMutation.mutate({ password: formData.newPassword }, {
+            onSuccess: () => {
+                alert('Password updated successfully! 🔐');
+                setFormData(prev => ({ ...prev, newPassword: '' }));
+            },
+            onError: (err: any) => {
+                alert(err.message || 'Password update failed');
+            }
+        });
+    };
+
+    if (loadingProfile && !profileData) {
+        return (
+            <div className="flex flex-col items-center justify-center py-32 space-y-4">
+                <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Accessing Profile Data...</p>
+            </div>
+        );
+    }
+
+    const loading = updateMutation.status === 'pending';
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -240,21 +254,7 @@ const AdminProfile: React.FC = () => {
                             </div>
                             <div className="pt-4">
                                 <button
-                                    onClick={async () => {
-                                        if (!formData.newPassword) return alert('Enter a new password first');
-                                        setLoading(true);
-                                        try {
-                                            const res = await api.put('/auth/me', { password: formData.newPassword });
-                                            if (res.success) {
-                                                alert('Password updated successfully! 🔐');
-                                                setFormData(prev => ({ ...prev, newPassword: '' }));
-                                            }
-                                        } catch (err: any) {
-                                            alert(err.message || 'Password update failed');
-                                        } finally {
-                                            setLoading(false);
-                                        }
-                                    }}
+                                    onClick={handleUpdatePassword}
                                     disabled={loading}
                                     className="px-6 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2"
                                 >
