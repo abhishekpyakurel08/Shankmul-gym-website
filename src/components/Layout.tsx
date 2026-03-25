@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { MapPin, User, Clock, Menu, X, Facebook, Instagram, Mail, ChevronUp } from 'lucide-react';
-
+import { Button } from '@/components/ui/button';
+import { motion, AnimatePresence } from 'framer-motion';
 const Layout = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [showBackToTop, setShowBackToTop] = useState(false);
@@ -72,7 +73,20 @@ const Layout = () => {
                         <Link to="/#contact" className="hover:text-brand-orange transition-colors">Contact</Link>
                     </div>
 
-
+                    {/* Desktop Join Button */}
+                    <div className="hidden md:flex items-center gap-4">
+                        <motion.a
+                            href="https://wa.me/9779743223799"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            <Button className="bg-slate-900 hover:bg-brand-orange text-white rounded-full px-6 shadow-lg shadow-slate-900/10 flex items-center gap-2 transition-all duration-300 font-bold">
+                                Join Now
+                            </Button>
+                        </motion.a>
+                    </div>
 
                     {/* Mobile Menu Button */}
                     <div className="md:hidden flex items-center gap-4">
@@ -83,21 +97,41 @@ const Layout = () => {
                 </div>
 
                 {/* Mobile Menu Dropdown */}
-                {isMobileMenuOpen && (
-                    <div className="absolute top-24 left-6 right-6 bg-white border border-slate-200 shadow-2xl rounded-3xl p-8 flex flex-col space-y-6 md:hidden animate-in fade-in slide-in-from-top-4">
-                        <div className="flex flex-col space-y-4">
-                            <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Home</Link>
-                            <Link to="/#about" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">About</Link>
-                            <Link to="/#services" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Services</Link>
-                            <Link to="/#nutrition" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Nutrition</Link>
-                            <Link to="/#schedule" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Schedule</Link>
-                            <Link to="/#gallery" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Gallery</Link>
-                            <Link to="/#workouts" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Workouts</Link>
-                            <Link to="/#contact" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Contact</Link>
-                        </div>
+                <AnimatePresence>
+                    {isMobileMenuOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                            transition={{ duration: 0.2, ease: "easeOut" }}
+                            className="absolute top-24 left-6 right-6 bg-white border border-slate-200 shadow-2xl rounded-3xl p-8 flex flex-col space-y-6 md:hidden z-40"
+                        >
+                            <div className="flex flex-col space-y-4">
+                                <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Home</Link>
+                                <Link to="/#about" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">About</Link>
+                                <Link to="/#services" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Services</Link>
+                                <Link to="/#nutrition" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Nutrition</Link>
+                                <Link to="/#schedule" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Schedule</Link>
+                                <Link to="/#gallery" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Gallery</Link>
+                                <Link to="/#workouts" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Workouts</Link>
+                                <Link to="/#contact" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Contact</Link>
+                            </div>
 
-                    </div>
-                )}
+                            <motion.a
+                                href="https://wa.me/9743223799"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                whileTap={{ scale: 0.95 }}
+                                className="w-full mt-2"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                                <Button className="w-full h-14 bg-slate-900 hover:bg-brand-orange text-white rounded-2xl flex items-center justify-center gap-3 shadow-xl transition-all duration-300 font-bold text-lg">
+                                    Join Now
+                                </Button>
+                            </motion.a>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </nav>
 
             {/* Main Content */}
