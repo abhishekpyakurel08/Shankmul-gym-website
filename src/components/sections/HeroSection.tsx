@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { MapPin, Clock, Activity, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
