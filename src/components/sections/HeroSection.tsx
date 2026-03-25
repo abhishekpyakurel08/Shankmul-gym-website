@@ -1,11 +1,8 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Play, MapPin, Clock, Activity, Zap, X } from 'lucide-react';
+import { MapPin, Clock, Activity, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const HeroSection = () => {
-    const [isVideoOpen, setIsVideoOpen] = useState(false);
-
     return (
         <>
             <section className="relative min-h-screen flex items-center pt-24 overflow-hidden bg-white">
@@ -40,15 +37,6 @@ const HeroSection = () => {
                                     Join Now
                                 </Button>
                             </Link>
-                            <button
-                                onClick={() => setIsVideoOpen(true)}
-                                className="h-14 px-8 rounded-full bg-white border border-slate-200 text-slate-900 hover:bg-slate-50 flex items-center gap-3 transition-colors group shadow-sm"
-                            >
-                                <div className="w-8 h-8 rounded-full bg-brand-orange flex items-center justify-center group-hover:scale-110 transition-transform">
-                                    <Play size={14} fill="white" className="ml-1" />
-                                </div>
-                                <span>Watch Video</span>
-                            </button>
                         </div>
 
                         {/* Info Cards */}
@@ -96,30 +84,6 @@ const HeroSection = () => {
                 </div>
             </section>
 
-            {/* Video Modal */}
-            {isVideoOpen && (
-                <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="relative w-full max-w-5xl">
-                        <button
-                            onClick={() => setIsVideoOpen(false)}
-                            className="absolute -top-12 right-0 text-white hover:text-brand-orange transition-colors"
-                        >
-                            <X size={32} />
-                        </button>
-                        <div className="aspect-video rounded-3xl overflow-hidden shadow-2xl border border-white/20">
-                            <iframe
-                                width="100%"
-                                height="100%"
-                                src="https://www.youtube.com/embed/XXYlFuWEuKI?autoplay=1"
-                                title="Gym Video"
-                                frameBorder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                            />
-                        </div>
-                    </div>
-                </div>
-            )}
         </>
     );
 };

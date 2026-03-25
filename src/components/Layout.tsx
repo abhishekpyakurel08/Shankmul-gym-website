@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { MapPin, User, Clock, Menu, X, Facebook, Instagram, Mail, ChevronUp } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 const Layout = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -73,14 +72,7 @@ const Layout = () => {
                         <Link to="/#contact" className="hover:text-brand-orange transition-colors">Contact</Link>
                     </div>
 
-                    <div className="hidden md:flex items-center gap-4">
-                        <Link to="/download">
-                            <Button className="bg-gradient-to-r from-green-400 via-blue-500 to-purple-500 hover:from-green-500 hover:to-purple-600 text-white rounded-full px-6 shadow-lg flex items-center gap-2 transition-all duration-200">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3.6 2.6c-.4.4-.6.9-.6 1.4v15.9c0 .5.2 1 .6 1.4.6.6 1.5.7 2.2.3l13.2-7.9c.7-.4.7-1.4 0-1.8L5.8 2.6c-.7-.4-1.6-.3-2.2.3zm1.4 1.4l13.2 7.9-13.2 7.9V4z" fill="currentColor" /></svg>
-                                Download App
-                            </Button>
-                        </Link>
-                    </div>
+
 
                     {/* Mobile Menu Button */}
                     <div className="md:hidden flex items-center gap-4">
@@ -103,12 +95,7 @@ const Layout = () => {
                             <Link to="/#workouts" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Workouts</Link>
                             <Link to="/#contact" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Contact</Link>
                         </div>
-                        <Link to="/download" onClick={() => setIsMobileMenuOpen(false)}>
-                            <Button className="w-full h-14 bg-gradient-to-r from-green-400 via-blue-500 to-purple-500 hover:from-green-500 hover:to-purple-600 text-white rounded-2xl flex items-center justify-center gap-3 shadow-xl transition-all duration-200 font-bold text-lg">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3.6 2.6c-.4.4-.6.9-.6 1.4v15.9c0 .5.2 1 .6 1.4.6.6 1.5.7 2.2.3l13.2-7.9c.7-.4.7-1.4 0-1.8L5.8 2.6c-.7-.4-1.6-.3-2.2.3zm1.4 1.4l13.2 7.9-13.2 7.9V4z" fill="currentColor" /></svg>
-                                Download App
-                            </Button>
-                        </Link>
+
                     </div>
                 )}
             </nav>

@@ -1,7 +1,7 @@
 import MotivationCarousel from '@/components/MotivationCarousel';
 import HeroSection from '@/components/sections/HeroSection';
 import AboutSection from '@/components/sections/AboutSection';
-import ServicesSection from '@/components/sections/ServicesSection';
+
 import NutritionSection from '@/components/sections/NutritionSection';
 import TrainersSection from '@/components/sections/TrainersSection';
 import ScheduleSection from '@/components/sections/ScheduleSection';
@@ -27,8 +27,6 @@ const HomePage = () => {
             {/* About Section */}
             <AboutSection />
 
-            {/* Services Section */}
-            <ServicesSection />
 
             {/* Nutrition Section */}
             <NutritionSection />
