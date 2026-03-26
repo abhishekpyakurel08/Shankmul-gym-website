@@ -75,15 +75,31 @@ const Layout = () => {
                     </Link>
 
                     {/* Desktop Menu */}
-                    <div className="hidden md:flex items-center space-x-6 text-sm font-medium text-slate-600">
-                        <Link to="/" className="hover:text-brand-orange transition-colors">Home</Link>
-                        <Link to="/#about" className="hover:text-brand-orange transition-colors">About</Link>
-                        <Link to="/#services" className="hover:text-brand-orange transition-colors">Services</Link>
-                        <Link to="/#nutrition" className="hover:text-brand-orange transition-colors">Nutrition</Link>
-                        <Link to="/#schedule" className="hover:text-brand-orange transition-colors">Schedule</Link>
-                        <Link to="/#gallery" className="hover:text-brand-orange transition-colors">Gallery</Link>
-                        <Link to="/#workouts" className="hover:text-brand-orange transition-colors">Workouts</Link>
-                        <Link to="/#contact" className="hover:text-brand-orange transition-colors">Contact</Link>
+                    <div className="hidden md:flex items-center space-x-8 text-sm font-bold uppercase tracking-widest text-slate-500">
+                        <Link to="/" className="relative py-2 group overflow-hidden">
+                            <span className="group-hover:text-brand-orange transition-colors duration-300">Home</span>
+                            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-orange transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
+                        </Link>
+                        <Link to="/#about" className="relative py-2 group overflow-hidden">
+                            <span className="group-hover:text-brand-orange transition-colors duration-300">About</span>
+                            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-orange transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
+                        </Link>
+                        <Link to="/#services" className="relative py-2 group overflow-hidden">
+                            <span className="group-hover:text-brand-orange transition-colors duration-300">Services</span>
+                            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-orange transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
+                        </Link>
+                        <Link to="/#schedule" className="relative py-2 group overflow-hidden">
+                            <span className="group-hover:text-brand-orange transition-colors duration-300">Schedule</span>
+                            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-orange transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
+                        </Link>
+                        <Link to="/#gallery" className="relative py-2 group overflow-hidden">
+                            <span className="group-hover:text-brand-orange transition-colors duration-300">Gallery</span>
+                            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-orange transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
+                        </Link>
+                        <Link to="/#contact" className="relative py-2 group overflow-hidden">
+                            <span className="group-hover:text-brand-orange transition-colors duration-300">Contact</span>
+                            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-orange transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
+                        </Link>
                     </div>
 
                     {/* Desktop Join Button */}

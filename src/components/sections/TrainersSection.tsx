@@ -13,11 +13,13 @@ const TrainersSection = () => {
                         { name: "Sarah Lee", role: "Yoga Instructor", image: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&auto=format&fit=crop&q=60" },
                         { name: "Mike Chen", role: "HIIT Specialist", image: "https://images.unsplash.com/photo-1548690312-e3b507d8c110?w=800&auto=format&fit=crop&q=60" }
                     ].map((trainer, i) => (
-                        <div key={i} className="group relative overflow-hidden rounded-3xl h-[450px] shadow-lg">
-                            <img src={trainer.image} alt={trainer.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-8">
-                                <h3 className="text-white text-2xl font-bold font-display">{trainer.name}</h3>
-                                <p className="text-brand-orange font-medium">{trainer.role}</p>
+                        <div key={i} className="group relative overflow-hidden rounded-3xl h-[450px] shadow-lg bg-slate-200">
+                            <img src={trainer.image} alt={trainer.name} className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110 opacity-90 group-hover:opacity-100" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent transition-opacity duration-500 flex flex-col justify-end p-8">
+                                <div className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500 ease-out">
+                                    <h3 className="text-white text-3xl font-bold font-display mb-1">{trainer.name}</h3>
+                                    <p className="text-brand-orange font-bold uppercase tracking-widest text-sm">{trainer.role}</p>
+                                </div>
                             </div>
                         </div>
                     ))}

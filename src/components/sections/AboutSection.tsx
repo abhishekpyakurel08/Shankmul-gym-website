@@ -51,24 +51,24 @@ const AboutSection = () => {
                         </div>
                     </div>
 
-                    <div className="relative">
-                        <div className="absolute -inset-4 bg-brand-orange/20 rounded-3xl blur-2xl opacity-40" />
+                    <div className="relative group/image">
+                        <div className="absolute -inset-4 bg-brand-orange/20 rounded-3xl blur-2xl opacity-0 group-hover/image:opacity-40 transition-opacity duration-700" />
                         <img
                             src="https://images.unsplash.com/photo-1549476464-37392f717541?q=80&w=1000&auto=format&fit=crop"
                             alt="Community Workout"
-                            className="relative rounded-3xl shadow-2xl w-full"
+                            className="relative rounded-[2.5rem] shadow-2xl w-full transition-transform duration-700 ease-out group-hover/image:scale-[1.02] group-hover/image:-rotate-1"
                         />
                         {/* Stats Card */}
-                        <Card className="absolute -bottom-6 left-1/2 -translate-x-1/2 md:-left-6 md:translate-x-0 border-slate-100 shadow-xl z-20 whitespace-nowrap overflow-hidden">
-                            <CardContent className="p-6 flex flex-row gap-6 items-center">
-                                <div>
-                                    <p className="text-2xl md:text-3xl font-bold font-display text-brand-orange">5k+</p>
-                                    <p className="text-[10px] md:text-xs text-muted-foreground uppercase font-bold tracking-wider">Members</p>
+                        <Card className="absolute -bottom-6 left-1/2 -translate-x-1/2 md:-left-6 md:translate-x-0 border-slate-100 shadow-2xl z-20 whitespace-nowrap overflow-hidden transition-all duration-700 ease-out group-hover/image:translate-y-[-8px] group-hover/image:shadow-brand-orange/20">
+                            <CardContent className="p-8 flex flex-row gap-8 items-center bg-white/90 backdrop-blur-md">
+                                <div className="text-center">
+                                    <p className="text-3xl md:text-4xl font-black font-display text-brand-orange leading-none mb-1">5k+</p>
+                                    <p className="text-[10px] md:text-xs text-muted-foreground uppercase font-black tracking-[0.2em]">Members</p>
                                 </div>
-                                <div className="hidden sm:block w-px h-12 bg-border" />
-                                <div>
-                                    <p className="text-2xl md:text-3xl font-bold font-display text-brand-blue">20+</p>
-                                    <p className="text-[10px] md:text-xs text-muted-foreground uppercase font-bold tracking-wider">Trainers</p>
+                                <div className="w-px h-12 bg-slate-200" />
+                                <div className="text-center">
+                                    <p className="text-3xl md:text-4xl font-black font-display text-brand-blue leading-none mb-1">20+</p>
+                                    <p className="text-[10px] md:text-xs text-muted-foreground uppercase font-black tracking-[0.2em]">Trainers</p>
                                 </div>
                             </CardContent>
                         </Card>
