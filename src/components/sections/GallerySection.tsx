@@ -34,13 +34,13 @@ const GallerySection = () => {
                 </div>
 
                 {/* Filters */}
-                <div className="flex flex-wrap justify-center gap-2 mb-12">
+                <div className="flex overflow-x-auto pb-4 hide-scrollbar -mx-6 px-6 sm:flex-wrap sm:justify-center gap-3 mb-12 sm:pb-0 sm:mx-0 sm:px-0 scroll-smooth">
                     {['All', 'Interior', 'Equipment', 'Classes', 'Training'].map((cat) => (
                         <button
                             key={cat}
                             onClick={() => setSelectedCategory(cat)}
-                            className={`px-6 py-2 rounded-full text-sm font-bold transition-all border ${selectedCategory === cat
-                                ? 'bg-brand-orange text-white shadow-lg border-brand-orange'
+                            className={`px-8 py-2.5 rounded-full text-sm font-bold transition-all border shrink-0 ${selectedCategory === cat
+                                ? 'bg-brand-orange text-white shadow-xl shadow-brand-orange/20 border-brand-orange scale-105'
                                 : 'bg-white text-slate-600 hover:bg-slate-100 border-slate-200'
                                 }`}
                         >

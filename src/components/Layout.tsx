@@ -1,8 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { MapPin, User, Clock, Menu, X, Facebook, Instagram, Mail, ChevronUp } from 'lucide-react';
+import { MapPin, User, Clock, Menu, X, Facebook, Instagram, Mail, ChevronUp, Home, Dumbbell, Calendar, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
+
+const WhatsAppIcon = ({ size = 18, className }: { size?: number, className?: string }) => (
+    <svg
+        viewBox="0 0 24 24"
+        width={size}
+        height={size}
+        fill="currentColor"
+        className={className}
+    >
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.438 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+    </svg>
+);
+
 const Layout = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [showBackToTop, setShowBackToTop] = useState(false);
@@ -43,7 +56,7 @@ const Layout = () => {
     }, [pathname, hash]);
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-brand-orange selection:text-white flex flex-col">
+        <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-brand-orange selection:text-white flex flex-col pb-24 md:pb-0">
             {/* Navigation */}
             <nav className="fixed w-full z-50 top-0 left-0 px-6 py-4">
                 <div className="max-w-7xl mx-auto bg-white/80 backdrop-blur-md border border-slate-200 rounded-full px-6 py-3 flex justify-between items-center shadow-lg">
@@ -82,7 +95,8 @@ const Layout = () => {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                         >
-                            <Button className="bg-slate-900 hover:bg-brand-orange text-white rounded-full px-6 shadow-lg shadow-slate-900/10 flex items-center gap-2 transition-all duration-300 font-bold">
+                            <Button className="bg-slate-900 hover:bg-[#25D366] text-white rounded-full px-6 shadow-lg shadow-slate-900/10 flex items-center gap-2 transition-all duration-300 font-bold">
+                                <WhatsAppIcon size={18} />
                                 Join Now
                             </Button>
                         </motion.a>
@@ -106,26 +120,49 @@ const Layout = () => {
                             transition={{ duration: 0.2, ease: "easeOut" }}
                             className="absolute top-24 left-6 right-6 bg-white border border-slate-200 shadow-2xl rounded-3xl p-8 flex flex-col space-y-6 md:hidden z-40"
                         >
-                            <div className="flex flex-col space-y-4">
-                                <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Home</Link>
-                                <Link to="/#about" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">About</Link>
-                                <Link to="/#services" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Services</Link>
-                                <Link to="/#nutrition" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Nutrition</Link>
-                                <Link to="/#schedule" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Schedule</Link>
-                                <Link to="/#gallery" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Gallery</Link>
-                                <Link to="/#workouts" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Workouts</Link>
-                                <Link to="/#contact" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900 border-b border-slate-50 pb-2">Contact</Link>
+                            <div className="flex flex-col space-y-6">
+                                <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-bold text-slate-900 flex items-center gap-4 group">
+                                    <div className="w-10 h-10 rounded-xl bg-brand-orange/10 flex items-center justify-center text-brand-orange group-hover:bg-brand-orange group-hover:text-white transition-all">
+                                        <Home size={20} />
+                                    </div>
+                                    Home
+                                </Link>
+                                <Link to="/#about" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-bold text-slate-900 flex items-center gap-4 group">
+                                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-brand-orange group-hover:text-white transition-all">
+                                        <User size={20} />
+                                    </div>
+                                    About
+                                </Link>
+                                <Link to="/#services" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-bold text-slate-900 flex items-center gap-4 group">
+                                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-brand-orange group-hover:text-white transition-all">
+                                        <Dumbbell size={20} />
+                                    </div>
+                                    Services
+                                </Link>
+                                <Link to="/#schedule" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-bold text-slate-900 flex items-center gap-4 group">
+                                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-brand-orange group-hover:text-white transition-all">
+                                        <Calendar size={20} />
+                                    </div>
+                                    Schedule
+                                </Link>
+                                <Link to="/#contact" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-bold text-slate-900 flex items-center gap-4 group">
+                                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-brand-orange group-hover:text-white transition-all">
+                                        <Phone size={20} />
+                                    </div>
+                                    Contact
+                                </Link>
                             </div>
 
                             <motion.a
-                                href="https://wa.me/9743223799"
+                                href="https://wa.me/9779743223799"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 whileTap={{ scale: 0.95 }}
-                                className="w-full mt-2"
+                                className="w-full mt-4"
                                 onClick={() => setIsMobileMenuOpen(false)}
                             >
-                                <Button className="w-full h-14 bg-slate-900 hover:bg-brand-orange text-white rounded-2xl flex items-center justify-center gap-3 shadow-xl transition-all duration-300 font-bold text-lg">
+                                <Button className="w-full h-16 bg-slate-900 hover:bg-[#25D366] text-white rounded-2xl flex items-center justify-center gap-3 shadow-xl transition-all duration-300 font-bold text-xl">
+                                    <WhatsAppIcon size={24} />
                                     Join Now
                                 </Button>
                             </motion.a>
@@ -188,7 +225,14 @@ const Layout = () => {
                                             </svg>
                                         )
                                     },
-                                    { name: 'Instagram', icon: Instagram, url: '#' }
+                                    {
+                                        name: 'Instagram', icon: Instagram, url: '#'
+                                    },
+                                    {
+                                        name: 'WhatsApp',
+                                        icon: WhatsAppIcon,
+                                        url: 'https://wa.me/9779743223799'
+                                    }
                                 ].map((social) => (
                                     <a
                                         key={social.name}
@@ -250,12 +294,48 @@ const Layout = () => {
             {/* Back to Top Button */}
             <button
                 onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                className={`fixed bottom-8 right-8 z-50 p-4 rounded-2xl bg-white border border-slate-200 shadow-2xl text-slate-900 transition-all duration-300 hover:bg-brand-orange hover:text-white hover:-translate-y-2 ${showBackToTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12 pointer-events-none'
+                className={`fixed bottom-24 md:bottom-8 right-6 md:right-8 z-50 p-4 rounded-2xl bg-white border border-slate-200 shadow-2xl text-slate-900 transition-all duration-300 hover:bg-brand-orange hover:text-white hover:-translate-y-2 ${showBackToTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12 pointer-events-none'
                     }`}
                 aria-label="Back to Top"
             >
                 <ChevronUp size={24} />
             </button>
+
+            {/* Floating WhatsApp Button */}
+            <motion.a
+                href="https://wa.me/9779743223799"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="fixed bottom-44 md:bottom-28 right-6 md:right-8 z-50 p-4 rounded-full bg-[#25D366] text-white shadow-2xl transition-all duration-300 hover:scale-110 flex items-center justify-center"
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+            >
+                <WhatsAppIcon size={24} />
+            </motion.a>
+
+            {/* Mobile Bottom Navigation */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 z-[60] px-6 pb-6 pt-2">
+                <div className="bg-white/80 backdrop-blur-xl border border-slate-200 rounded-[2rem] flex justify-around items-center py-4 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] px-2">
+                    <Link to="/" className="flex flex-col items-center gap-1.5 text-slate-400 hover:text-brand-orange transition-all active:scale-90">
+                        <Home size={22} className={pathname === '/' && !hash ? 'text-brand-orange' : ''} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Home</span>
+                    </Link>
+                    <Link to="/#services" className="flex flex-col items-center gap-1.5 text-slate-400 hover:text-brand-orange transition-all active:scale-90">
+                        <Dumbbell size={22} className={hash === '#services' ? 'text-brand-orange' : ''} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Services</span>
+                    </Link>
+                    <Link to="/#schedule" className="flex flex-col items-center gap-1.5 text-slate-400 hover:text-brand-orange transition-all active:scale-90">
+                        <Calendar size={22} className={hash === '#schedule' ? 'text-brand-orange' : ''} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Schedule</span>
+                    </Link>
+                    <Link to="/#contact" className="flex flex-col items-center gap-1.5 text-slate-400 hover:text-brand-orange transition-all active:scale-90">
+                        <Phone size={22} className={hash === '#contact' ? 'text-brand-orange' : ''} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Contact</span>
+                    </Link>
+                </div>
+            </div>
         </div>
     );
 };

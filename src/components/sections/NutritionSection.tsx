@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { PieChart, Utensils, Droplets, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { nutritionData } from '@/data/nutritionData';
 
 const NutritionSection = () => {
@@ -29,33 +31,39 @@ const NutritionSection = () => {
                         </p>
 
                         <div className="space-y-4">
-                            <div className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-                                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                                    <Utensils className="text-red-500" />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-lg text-slate-900">Protein (25-30%)</h3>
-                                    <p className="text-sm text-slate-500">Essential for muscle repair. Lean meats, fish, eggs, beans, tofu.</p>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-                                <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center shrink-0">
-                                    <PieChart className="text-yellow-500" />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-lg text-slate-900">Carbohydrates (45-55%)</h3>
-                                    <p className="text-sm text-slate-500">Your body's main energy source. Whole grains, fruits, vegetables.</p>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-                                <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                                    <Droplets className="text-green-500" />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-lg text-slate-900">Healthy Fats (20-25%)</h3>
-                                    <p className="text-sm text-slate-500">Vital for hormone function. Avocados, nuts, seeds, olive oil.</p>
-                                </div>
-                            </div>
+                            <Card className="bg-slate-50 border-slate-100 shadow-sm transition-colors hover:bg-slate-100">
+                                <CardContent className="flex items-start gap-4 p-4">
+                                    <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                                        <Utensils className="text-red-500" />
+                                    </div>
+                                    <div className="pt-1">
+                                        <h3 className="font-bold text-lg text-slate-900 leading-tight">Protein (25-30%)</h3>
+                                        <p className="text-sm text-slate-500 mt-1">Essential for muscle repair. Lean meats, fish, eggs, beans, tofu.</p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <Card className="bg-slate-50 border-slate-100 shadow-sm transition-colors hover:bg-slate-100">
+                                <CardContent className="flex items-start gap-4 p-4">
+                                    <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center shrink-0">
+                                        <PieChart className="text-yellow-500" />
+                                    </div>
+                                    <div className="pt-1">
+                                        <h3 className="font-bold text-lg text-slate-900 leading-tight">Carbohydrates (45-55%)</h3>
+                                        <p className="text-sm text-slate-500 mt-1">Your body's main energy source. Whole grains, fruits, vegetables.</p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <Card className="bg-slate-50 border-slate-100 shadow-sm transition-colors hover:bg-slate-100">
+                                <CardContent className="flex items-start gap-4 p-4">
+                                    <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                                        <Droplets className="text-green-500" />
+                                    </div>
+                                    <div className="pt-1">
+                                        <h3 className="font-bold text-lg text-slate-900 leading-tight">Healthy Fats (20-25%)</h3>
+                                        <p className="text-sm text-slate-500 mt-1">Vital for hormone function. Avocados, nuts, seeds, olive oil.</p>
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </div>
                     </div>
 
@@ -85,52 +93,54 @@ const NutritionSection = () => {
                     <h2 className="text-3xl font-bold font-display text-slate-900 text-center mb-12">Sample Daily Plan</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         {nutritionData.map((meal) => (
-                            <Link to={`/nutrition/${meal.id}`} key={meal.id} className="group relative bg-white rounded-3xl overflow-hidden hover:-translate-y-2 transition-all duration-300 shadow-lg hover:shadow-xl border border-slate-100 flex flex-col h-full">
-                                <div className="h-48 overflow-hidden relative shrink-0">
-                                    <div className="absolute top-4 left-4 z-10 bg-black/50 backdrop-blur-md text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                                        {meal.time}
+                            <Link to={`/nutrition/${meal.id}`} key={meal.id} className="group">
+                                <Card className="relative overflow-hidden hover:-translate-y-2 transition-all duration-300 shadow-md hover:shadow-xl border-slate-100 h-full flex flex-col">
+                                    <div className="h-48 overflow-hidden relative shrink-0">
+                                        <Badge className="absolute top-4 left-4 z-10 bg-black/50 backdrop-blur-md text-white hover:bg-black/60 rounded-full font-bold uppercase tracking-wider">
+                                            {meal.time}
+                                        </Badge>
+                                        <img
+                                            src={meal.img}
+                                            alt={meal.name}
+                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                                     </div>
-                                    <img
-                                        src={meal.img}
-                                        alt={meal.name}
-                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                                </div>
-                                <div className="p-6 flex flex-col flex-grow">
-                                    <h3 className="font-bold text-xl mb-3 text-slate-900 group-hover:text-brand-orange transition-colors">{meal.name}</h3>
+                                    <CardContent className="p-6 flex flex-col flex-grow">
+                                        <h3 className="font-bold text-xl mb-3 text-slate-900 group-hover:text-brand-orange transition-colors">{meal.name}</h3>
 
-                                    {/* Macro Preview */}
-                                    <div className="grid grid-cols-2 gap-2 mb-4 text-xs font-medium text-slate-500">
-                                        <div className="flex items-center gap-1">
-                                            <span className="text-brand-orange">🔥 {meal.calories}</span>
+                                        {/* Macro Preview */}
+                                        <div className="grid grid-cols-2 gap-2 mb-4 text-xs font-medium text-slate-500">
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-brand-orange">🔥 {meal.calories}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-brand-blue">💪 {meal.protein}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-green-600">🌾 {meal.carbs}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-orange-500">💧 {meal.fats}</span>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-1">
-                                            <span className="text-brand-blue">💪 {meal.protein}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <span className="text-green-600">🌾 {meal.carbs}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <span className="text-orange-500">💧 {meal.fats}</span>
-                                        </div>
-                                    </div>
 
-                                    <div className="flex flex-wrap gap-2 mb-6">
-                                        {meal.items.slice(0, 2).map((item, i) => (
-                                            <span key={i} className="text-xs bg-slate-50 border border-slate-100 text-slate-600 px-2 py-1 rounded-md">
-                                                {item}
-                                            </span>
-                                        ))}
-                                        {meal.items.length > 2 && (
-                                            <span className="text-xs text-slate-400 px-2 py-1">+{meal.items.length - 2} more</span>
-                                        )}
-                                    </div>
+                                        <div className="flex flex-wrap gap-2 mb-6">
+                                            {meal.items.slice(0, 2).map((item, i) => (
+                                                <Badge key={i} variant="secondary" className="text-xs bg-slate-100 text-slate-600 font-normal">
+                                                    {item}
+                                                </Badge>
+                                            ))}
+                                            {meal.items.length > 2 && (
+                                                <span className="text-xs text-slate-400 px-2 py-1">+{meal.items.length - 2} more</span>
+                                            )}
+                                        </div>
 
-                                    <div className="mt-auto flex items-center text-brand-orange text-sm font-bold group-hover:gap-2 transition-all">
-                                        View Details <ArrowRight size={16} className="ml-1" />
-                                    </div>
-                                </div>
+                                        <div className="mt-auto flex items-center text-brand-orange text-sm font-bold group-hover:gap-2 transition-all">
+                                            View Details <ArrowRight size={16} className="ml-1" />
+                                        </div>
+                                    </CardContent>
+                                </Card>
                             </Link>
                         ))}
                     </div>

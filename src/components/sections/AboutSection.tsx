@@ -1,5 +1,5 @@
 import { Award, Users, Target, History } from 'lucide-react';
-
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 const AboutSection = () => {
     return (
         <section id="about" className="py-24 px-6 bg-white">
@@ -59,17 +59,19 @@ const AboutSection = () => {
                             className="relative rounded-3xl shadow-2xl w-full"
                         />
                         {/* Stats Card */}
-                        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 md:-left-6 md:translate-x-0 bg-white border border-slate-100 p-6 rounded-2xl shadow-xl flex gap-6 z-20 whitespace-nowrap">
-                            <div>
-                                <p className="text-2xl md:text-3xl font-bold font-display text-brand-orange">5k+</p>
-                                <p className="text-[10px] md:text-xs text-slate-500 uppercase font-bold tracking-wider">Members</p>
-                            </div>
-                            <div className="w-px bg-slate-200" />
-                            <div>
-                                <p className="text-2xl md:text-3xl font-bold font-display text-brand-blue">20+</p>
-                                <p className="text-[10px] md:text-xs text-slate-500 uppercase font-bold tracking-wider">Trainers</p>
-                            </div>
-                        </div>
+                        <Card className="absolute -bottom-6 left-1/2 -translate-x-1/2 md:-left-6 md:translate-x-0 border-slate-100 shadow-xl z-20 whitespace-nowrap overflow-hidden">
+                            <CardContent className="p-6 flex flex-row gap-6 items-center">
+                                <div>
+                                    <p className="text-2xl md:text-3xl font-bold font-display text-brand-orange">5k+</p>
+                                    <p className="text-[10px] md:text-xs text-muted-foreground uppercase font-bold tracking-wider">Members</p>
+                                </div>
+                                <div className="hidden sm:block w-px h-12 bg-border" />
+                                <div>
+                                    <p className="text-2xl md:text-3xl font-bold font-display text-brand-blue">20+</p>
+                                    <p className="text-[10px] md:text-xs text-muted-foreground uppercase font-bold tracking-wider">Trainers</p>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
 
@@ -87,11 +89,15 @@ const AboutSection = () => {
                             { title: "Hygiene Focused", text: "Sanitized continuously for your safety." },
                             { title: "Flexible Hours", text: "Open early and late to fit your schedule." }
                         ].map((item, i) => (
-                            <div key={i} className="bg-slate-50 p-6 rounded-2xl hover:bg-brand-orange/5 transition-colors border border-slate-100 shadow-sm">
-                                <Award className="text-brand-orange mb-4" size={32} />
-                                <h3 className="font-bold text-lg mb-2">{item.title}</h3>
-                                <p className="text-sm text-slate-600">{item.text}</p>
-                            </div>
+                            <Card key={i} className="bg-slate-50 border-slate-100 shadow-sm hover:bg-brand-orange/5 transition-colors group">
+                                <CardHeader className="pb-2">
+                                    <Award className="text-brand-orange mb-2 group-hover:scale-110 transition-transform" size={32} />
+                                    <CardTitle className="text-lg">{item.title}</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-muted-foreground">{item.text}</p>
+                                </CardContent>
+                            </Card>
                         ))}
                     </div>
                 </div>
