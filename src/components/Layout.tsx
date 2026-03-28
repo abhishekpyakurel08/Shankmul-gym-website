@@ -17,29 +17,58 @@ const WhatsAppIcon = ({ size = 18, className }: { size?: number, className?: str
 );
 
 const Layout = () => {
+    const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [showBackToTop, setShowBackToTop] = useState(false);
+    const [activeSection, setActiveSection] = useState('Home');
+    const { pathname, hash } = useLocation();
 
-    // Watch scroll position for Back to Top button
     useEffect(() => {
         const handleScroll = () => {
-            if (window.scrollY > 1000) {
-                setShowBackToTop(true);
-            } else {
-                setShowBackToTop(false);
+            setIsScrolled(window.scrollY > 50);
+            setShowBackToTop(window.scrollY > 500);
+
+            // ScrollSpy Logic
+            const sections = ['about', 'trainers', 'schedule', 'gallery', 'contact'];
+            const scrollPos = window.scrollY + (window.innerHeight / 3);
+
+            if (window.scrollY < 300) {
+                setActiveSection('Home');
+                return;
             }
+
+            let currentSection = activeSection;
+            for (const section of sections) {
+                const element = document.getElementById(section);
+                if (element) {
+                    const { offsetTop, offsetHeight } = element;
+                    if (scrollPos >= offsetTop && scrollPos < offsetTop + offsetHeight) {
+                        currentSection = section.charAt(0).toUpperCase() + section.slice(1);
+                        break;
+                    }
+                }
+            }
+
+            // Special cases for mapped names if needed
+            if (currentSection === 'Trainers') currentSection = 'About'; // If Trainers is part of About flow
+
+            setActiveSection(currentSection);
         };
 
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    const isActive = (path: string, name: string) => {
+        if (pathname !== '/') return false;
+        if (path === '/' && activeSection === 'Home') return true;
+        return activeSection === name;
+    };
+
     // Ensure dark mode is removed on mount
     useEffect(() => {
         document.documentElement.classList.remove('dark');
     }, []);
-
-    const { pathname, hash } = useLocation();
 
     // Handle scroll to hash on route change
     useEffect(() => {
@@ -55,63 +84,66 @@ const Layout = () => {
         }
     }, [pathname, hash]);
 
+    const navLinks = [
+        { name: 'Home', path: '/' },
+        { name: 'About', path: '/#about' },
+        { name: 'Schedule', path: '/#schedule' },
+        { name: 'Gallery', path: '/#gallery' },
+        { name: 'Contact', path: '/#contact' },
+    ];
+
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-brand-orange selection:text-white flex flex-col pb-24 md:pb-0">
-            {/* Navigation */}
-            <nav className="fixed w-full z-50 top-0 left-0 px-6 py-4">
-                <div className="max-w-7xl mx-auto bg-white/80 backdrop-blur-md border border-slate-200 rounded-full px-6 py-3 flex justify-between items-center shadow-lg">
-                    <Link to="/" className="flex items-center gap-2 group">
-                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center overflow-hidden border border-slate-100 group-hover:scale-105 transition-transform">
+        <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-brand-orange selection:text-white flex flex-col">
+            {/* Header / Navigation */}
+            <nav
+                className={`fixed w-full z-50 top-0 left-0 px-4 md:px-6 transition-all duration-300 ${isScrolled ? 'py-3' : 'py-5'}`}
+            >
+                <div
+                    className={`max-w-7xl mx-auto border transition-all duration-300 rounded-[2rem] px-4 md:px-6 py-3 flex justify-between items-center ${isScrolled
+                        ? 'bg-white/95 backdrop-blur-xl border-slate-200 shadow-xl'
+                        : 'bg-white/70 backdrop-blur-md border-white/20 shadow-lg'
+                        }`}
+                >
+                    <Link to="/" className="flex items-center gap-2 md:gap-3 group">
+                        <div className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-xl flex items-center justify-center overflow-hidden border border-slate-100 group-hover:scale-105 transition-transform duration-300">
                             <img src="/shankhamul-logo.jpg" alt="Logo" className="w-full h-full object-cover" />
                         </div>
                         <div className="flex flex-col leading-none">
-                            <span className="font-display font-bold text-lg tracking-tight text-slate-900">
+                            <span className="font-display font-bold text-sm md:text-lg tracking-tight text-slate-900">
                                 SHANKHAMUL
                             </span>
-                            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-brand-orange">
+                            <span className="text-[7px] md:text-[8px] font-black uppercase tracking-[0.2em] text-brand-orange mt-0.5">
                                 Health Club & Fitness Centre
                             </span>
                         </div>
                     </Link>
 
                     {/* Desktop Menu */}
-                    <div className="hidden md:flex items-center space-x-8 text-sm font-bold uppercase tracking-widest text-slate-500">
-                        <Link to="/" className="relative py-2 group overflow-hidden">
-                            <span className="group-hover:text-brand-orange transition-colors duration-300">Home</span>
-                            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-orange transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
-                        </Link>
-                        <Link to="/#about" className="relative py-2 group overflow-hidden">
-                            <span className="group-hover:text-brand-orange transition-colors duration-300">About</span>
-                            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-orange transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
-                        </Link>
-                        <Link to="/#services" className="relative py-2 group overflow-hidden">
-                            <span className="group-hover:text-brand-orange transition-colors duration-300">Services</span>
-                            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-orange transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
-                        </Link>
-                        <Link to="/#schedule" className="relative py-2 group overflow-hidden">
-                            <span className="group-hover:text-brand-orange transition-colors duration-300">Schedule</span>
-                            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-orange transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
-                        </Link>
-                        <Link to="/#gallery" className="relative py-2 group overflow-hidden">
-                            <span className="group-hover:text-brand-orange transition-colors duration-300">Gallery</span>
-                            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-orange transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
-                        </Link>
-                        <Link to="/#contact" className="relative py-2 group overflow-hidden">
-                            <span className="group-hover:text-brand-orange transition-colors duration-300">Contact</span>
-                            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-orange transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
-                        </Link>
+                    <div className="hidden md:flex items-center space-x-1 text-[11px] font-bold uppercase tracking-widest">
+                        {navLinks.map((link) => (
+                            <Link
+                                key={link.name}
+                                to={link.path}
+                                className={`relative px-4 py-2 group overflow-hidden transition-colors rounded-full ${isActive(link.path, link.name) ? 'text-brand-orange bg-brand-orange/5' : 'text-slate-600 hover:text-brand-orange'
+                                    }`}
+                            >
+                                <span className="relative z-10 transition-colors">{link.name}</span>
+                                <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-brand-orange rounded-full transition-all duration-300 ${isActive(link.path, link.name) ? 'opacity-100' : 'opacity-0 scale-0 group-hover:opacity-40 group-hover:scale-100'
+                                    }`} />
+                            </Link>
+                        ))}
                     </div>
 
-                    {/* Desktop Join Button */}
+                    {/* Desktop Actions */}
                     <div className="hidden md:flex items-center gap-4">
                         <motion.a
                             href="https://wa.me/9779743223799"
                             target="_blank"
                             rel="noopener noreferrer"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
                         >
-                            <Button className="bg-slate-900 hover:bg-[#25D366] text-white rounded-full px-6 shadow-lg shadow-slate-900/10 flex items-center gap-2 transition-all duration-300 font-bold">
+                            <Button className="bg-slate-900 hover:bg-[#25D366] text-white rounded-full px-6 shadow-lg shadow-slate-900/10 flex items-center gap-2 transition-all font-bold h-12">
                                 <WhatsAppIcon size={18} />
                                 Join Now
                             </Button>
@@ -120,65 +152,59 @@ const Layout = () => {
 
                     {/* Mobile Menu Button */}
                     <div className="md:hidden flex items-center gap-4">
-                        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-slate-900">
+                        <button
+                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                            className={`p-2 rounded-xl transition-colors ${isMobileMenuOpen ? 'bg-brand-orange/10 text-brand-orange' : 'text-slate-900 hover:bg-slate-100'}`}
+                        >
                             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                         </button>
                     </div>
                 </div>
 
-                {/* Mobile Menu Dropdown */}
+                {/* Mobile Menu Overlay */}
                 <AnimatePresence>
                     {isMobileMenuOpen && (
                         <motion.div
                             initial={{ opacity: 0, y: -20, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                            transition={{ duration: 0.2, ease: "easeOut" }}
-                            className="absolute top-24 left-6 right-6 bg-white border border-slate-200 shadow-2xl rounded-3xl p-8 flex flex-col space-y-6 md:hidden z-40"
+                            transition={{ duration: 0.2 }}
+                            className="absolute top-[calc(100%+12px)] left-4 right-4 bg-white/95 backdrop-blur-2xl border border-slate-200 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] rounded-3xl p-6 flex flex-col md:hidden z-40 overflow-hidden"
                         >
-                            <div className="flex flex-col space-y-6">
-                                <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-bold text-slate-900 flex items-center gap-4 group">
-                                    <div className="w-10 h-10 rounded-xl bg-brand-orange/10 flex items-center justify-center text-brand-orange group-hover:bg-brand-orange group-hover:text-white transition-all">
-                                        <Home size={20} />
-                                    </div>
-                                    Home
-                                </Link>
-                                <Link to="/#about" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-bold text-slate-900 flex items-center gap-4 group">
-                                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-brand-orange group-hover:text-white transition-all">
-                                        <User size={20} />
-                                    </div>
-                                    About
-                                </Link>
-                                <Link to="/#services" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-bold text-slate-900 flex items-center gap-4 group">
-                                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-brand-orange group-hover:text-white transition-all">
-                                        <Dumbbell size={20} />
-                                    </div>
-                                    Services
-                                </Link>
-                                <Link to="/#schedule" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-bold text-slate-900 flex items-center gap-4 group">
-                                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-brand-orange group-hover:text-white transition-all">
-                                        <Calendar size={20} />
-                                    </div>
-                                    Schedule
-                                </Link>
-                                <Link to="/#contact" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-bold text-slate-900 flex items-center gap-4 group">
-                                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-brand-orange group-hover:text-white transition-all">
-                                        <Phone size={20} />
-                                    </div>
-                                    Contact
-                                </Link>
+                            <div className="flex flex-col space-y-1 mb-6">
+                                {navLinks.map((link, idx) => {
+                                    const Icon = [Home, User, Dumbbell, Calendar, Mail, Phone][idx] || Home;
+                                    const active = isActive(link.path, link.name);
+                                    return (
+                                        <Link
+                                            key={link.name}
+                                            to={link.path}
+                                            onClick={() => setIsMobileMenuOpen(false)}
+                                            className={`text-lg font-bold flex items-center gap-4 py-3 px-3 rounded-2xl transition-all group ${active
+                                                ? 'bg-brand-orange/5 text-brand-orange'
+                                                : 'text-slate-700 hover:bg-slate-50'
+                                                }`}
+                                        >
+                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${active ? 'bg-brand-orange text-white shadow-md shadow-brand-orange/30' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200 group-hover:text-slate-600'
+                                                }`}>
+                                                <Icon size={20} />
+                                            </div>
+                                            {link.name}
+                                        </Link>
+                                    );
+                                })}
                             </div>
 
                             <motion.a
                                 href="https://wa.me/9779743223799"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                whileTap={{ scale: 0.95 }}
-                                className="w-full mt-4"
+                                whileTap={{ scale: 0.97 }}
+                                className="w-full"
                                 onClick={() => setIsMobileMenuOpen(false)}
                             >
-                                <Button className="w-full h-16 bg-slate-900 hover:bg-[#25D366] text-white rounded-2xl flex items-center justify-center gap-3 shadow-xl transition-all duration-300 font-bold text-xl">
-                                    <WhatsAppIcon size={24} />
+                                <Button className="w-full h-14 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-[#25D366]/30 transition-all font-bold text-lg border-none">
+                                    <WhatsAppIcon size={22} />
                                     Join Now
                                 </Button>
                             </motion.a>
@@ -331,27 +357,6 @@ const Layout = () => {
                 <WhatsAppIcon size={24} />
             </motion.a>
 
-            {/* Mobile Bottom Navigation */}
-            <div className="md:hidden fixed bottom-0 left-0 right-0 z-[60] px-6 pb-6 pt-2">
-                <div className="bg-white/80 backdrop-blur-xl border border-slate-200 rounded-[2rem] flex justify-around items-center py-4 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] px-2">
-                    <Link to="/" className="flex flex-col items-center gap-1.5 text-slate-400 hover:text-brand-orange transition-all active:scale-90">
-                        <Home size={22} className={pathname === '/' && !hash ? 'text-brand-orange' : ''} />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">Home</span>
-                    </Link>
-                    <Link to="/#services" className="flex flex-col items-center gap-1.5 text-slate-400 hover:text-brand-orange transition-all active:scale-90">
-                        <Dumbbell size={22} className={hash === '#services' ? 'text-brand-orange' : ''} />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">Services</span>
-                    </Link>
-                    <Link to="/#schedule" className="flex flex-col items-center gap-1.5 text-slate-400 hover:text-brand-orange transition-all active:scale-90">
-                        <Calendar size={22} className={hash === '#schedule' ? 'text-brand-orange' : ''} />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">Schedule</span>
-                    </Link>
-                    <Link to="/#contact" className="flex flex-col items-center gap-1.5 text-slate-400 hover:text-brand-orange transition-all active:scale-90">
-                        <Phone size={22} className={hash === '#contact' ? 'text-brand-orange' : ''} />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">Contact</span>
-                    </Link>
-                </div>
-            </div>
         </div>
     );
 };

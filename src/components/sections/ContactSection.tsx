@@ -1,4 +1,5 @@
 import { MapPin, Phone, Mail, Clock } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const WhatsAppIcon = ({ size = 18, className }: { size?: number, className?: string }) => (
     <svg
@@ -14,11 +15,17 @@ const WhatsAppIcon = ({ size = 18, className }: { size?: number, className?: str
 
 const ContactSection = () => {
     return (
-        <section id="contact" className="py-24 px-6 bg-white">
+        <section id="contact" className="py-32 px-6 bg-white overflow-hidden">
             <div className="container mx-auto">
                 <div className="flex flex-col lg:flex-row gap-16 items-center">
                     {/* Contact Info */}
-                    <div className="flex-1 space-y-8">
+                    <motion.div
+                        initial={{ opacity: 0, x: -40 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.7 }}
+                        className="flex-1 space-y-8"
+                    >
                         <div>
                             <span className="text-brand-orange font-bold tracking-wider uppercase text-sm mb-2 block">Find Us</span>
                             <h2 className="font-display text-4xl md:text-5xl font-bold text-slate-900 mb-6">Visit Our <br /> <span className="text-brand-orange">Health Club</span></h2>
@@ -83,10 +90,16 @@ const ContactSection = () => {
                                 <p className="text-slate-600 pl-13 font-medium">+977 9743223799</p>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* Map Visual */}
-                    <div className="flex-1 w-full lg:w-auto">
+                    <motion.div
+                        initial={{ opacity: 0, x: 40 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.7 }}
+                        className="flex-1 w-full lg:w-auto"
+                    >
                         <div className="relative rounded-[40px] overflow-hidden shadow-2xl border-8 border-slate-50 group">
                             <img
                                 src="/images/map.png"
@@ -109,7 +122,7 @@ const ContactSection = () => {
                                 </a>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             </div>
         </section>

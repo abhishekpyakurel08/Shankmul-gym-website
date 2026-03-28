@@ -1,54 +1,51 @@
+import { motion } from 'framer-motion';
 import { Award, Users, Target, History } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+import aboutData from '@/data/aboutData.json';
+
+type IconName = 'Target' | 'Users' | 'History' | 'Award';
+const iconMap: Record<IconName, React.ElementType> = { Target, Users, History, Award };
+
 const AboutSection = () => {
     return (
-        <section id="about" className="py-24 px-6 bg-white">
+        <section id="about" className="py-32 px-6 bg-white overflow-hidden">
             <div className="container mx-auto">
-                <div className="text-center max-w-2xl mx-auto mb-16">
-                    <span className="text-brand-orange font-bold tracking-wider uppercase text-sm mb-2 block">Our Story</span>
-                    <h2 className="font-display text-4xl font-bold mb-4 text-slate-900">More Than Just A Gym</h2>
-                    <p className="text-slate-600">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="text-center max-w-2xl mx-auto mb-20"
+                >
+                    <span className="badge badge-secondary mb-4 p-4 text-xs">Our Story</span>
+                    <h2 className="font-display text-4xl md:text-6xl font-bold mb-6 text-slate-900">More Than Just A Gym</h2>
+                    <p className="text-slate-600 text-lg leading-relaxed">
                         Shankhamul Health Club & Fitness Centre was founded with a single mission: to empower the community of Kathmandu through health and fitness.
                     </p>
-                </div>
+                </motion.div>
 
-                <div className="grid md:grid-cols-2 gap-16 items-center mb-24">
-                    <div className="space-y-8">
-                        <div className="flex gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-brand-orange/10 flex items-center justify-center shrink-0">
-                                <Target className="text-brand-orange" size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-display text-2xl font-bold mb-2">Our Mission</h3>
-                                <p className="text-slate-600">
-                                    To provide world-class fitness facilities and expert guidance accessible to everyone, helping our members discover their true potential.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-brand-blue/10 flex items-center justify-center shrink-0">
-                                <Users className="text-brand-blue" size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-display text-2xl font-bold mb-2">Our Community</h3>
-                                <p className="text-slate-600">
-                                    We believe fitness is stronger together. Our diverse community of members supports and inspires each other every single day.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center shrink-0">
-                                <History className="text-green-500" size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-display text-2xl font-bold mb-2">Our History</h3>
-                                <p className="text-slate-600">
-                                    Established in 2018, we've grown from a small neighborhood gym to Kathmandu's premier fitness destination, serving over 5,000 members.
-                                </p>
-                            </div>
-                        </div>
+                <div className="grid md:grid-cols-2 gap-20 items-center mb-32">
+                    <div className="space-y-10">
+                        {aboutData.pillars.map((item, i) => {
+                            const Icon = iconMap[item.icon as IconName] || Award;
+                            return (
+                                <motion.div
+                                    key={i}
+                                    initial={{ opacity: 0, x: -30 }}
+                                    whileInView={{ opacity: 1, x: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ duration: 0.8, delay: i * 0.2 }}
+                                    className="flex gap-6 group"
+                                >
+                                    <div className={`w-14 h-14 rounded-2xl bg-${item.color}/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-500`}>
+                                        <Icon className={`text-${item.color}`} size={28} />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-display text-2xl font-bold mb-3">{item.title}</h3>
+                                        <p className="text-slate-600 leading-relaxed">{item.text}</p>
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
                     </div>
 
                     <div className="relative group/image">
@@ -76,28 +73,33 @@ const AboutSection = () => {
                 </div>
 
                 {/* Why Choose Us */}
-                <div>
-                    <div className="text-center max-w-2xl mx-auto mb-16">
+                <div className="mt-32">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="text-center max-w-2xl mx-auto mb-16"
+                    >
                         <h2 className="font-display text-4xl font-bold mb-4">Why Choose Shankhamul?</h2>
                         <p className="text-slate-600">We invest in the best so you can be your best.</p>
-                    </div>
+                    </motion.div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {[
-                            { title: "Top Equipment", text: "Premium Technogym & Rogue fitness equipment." },
-                            { title: "Expert Trainers", text: "Certified professionals to guide your journey." },
-                            { title: "Hygiene Focused", text: "Sanitized continuously for your safety." },
-                            { title: "Flexible Hours", text: "Open early and late to fit your schedule." }
-                        ].map((item, i) => (
-                            <Card key={i} className="bg-slate-50 border-slate-100 shadow-sm hover:bg-brand-orange/5 transition-colors group">
-                                <CardHeader className="pb-2">
+                        {aboutData.whyChooseUs.map((item, i) => (
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.5, delay: i * 0.1 }}
+                                className="daisy-card group"
+                            >
+                                <div className="daisy-card-body bg-slate-50 hover:bg-brand-orange/5 transition-colors">
                                     <Award className="text-brand-orange mb-2 group-hover:scale-110 transition-transform" size={32} />
-                                    <CardTitle className="text-lg">{item.title}</CardTitle>
-                                </CardHeader>
-                                <CardContent>
+                                    <h3 className="text-lg font-bold">{item.title}</h3>
                                     <p className="text-sm text-muted-foreground">{item.text}</p>
-                                </CardContent>
-                            </Card>
+                                </div>
+                            </motion.div>
                         ))}
                     </div>
                 </div>
