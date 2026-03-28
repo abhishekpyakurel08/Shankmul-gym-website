@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Clock, User, Flame, Dumbbell, Activity, Zap, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+import scheduleDataRaw from '@/data/scheduleData.json';
 
 interface ClassSession {
     id: string;
@@ -14,42 +16,11 @@ interface ClassSession {
 }
 
 const ScheduleSection = () => {
-    // ... same data and helper functions ...
+    const scheduleData = scheduleDataRaw as Record<string, ClassSession[]>;
     const [activeDay, setActiveDay] = useState('Monday');
     const [selectedClass, setSelectedClass] = useState<ClassSession | null>(null);
 
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-    const scheduleData: Record<string, ClassSession[]> = {
-        'Monday': [
-            { id: 'm1', time: '06:00 AM', title: 'Power Lifting', trainer: 'Alex Roy', type: 'Strength', intensity: 'High', spotsLeft: 4 },
-            { id: 'm2', time: '08:00 AM', title: 'Morning Flow', trainer: 'Sarah Lee', type: 'Yoga', intensity: 'Low', spotsLeft: 8 },
-            { id: 'm3', time: '05:30 PM', title: 'HIIT Blast', trainer: 'Mike Chen', type: 'HIIT', intensity: 'High', spotsLeft: 2 },
-        ],
-        'Tuesday': [
-            { id: 't1', time: '07:00 AM', title: 'Cardio Kick', trainer: 'Jenny Wi', type: 'Cardio', intensity: 'Medium', spotsLeft: 5 },
-            { id: 't2', time: '06:00 PM', title: 'Core Strength', trainer: 'Alex Roy', type: 'Strength', intensity: 'Medium', spotsLeft: 6 },
-        ],
-        'Wednesday': [
-            { id: 'w1', time: '06:00 AM', title: 'CrossFit', trainer: 'Mike Chen', type: 'HIIT', intensity: 'High', spotsLeft: 3 },
-            { id: 'w2', time: '07:30 PM', title: 'Zumba Dance', trainer: 'Lisa Ray', type: 'Cardio', intensity: 'Medium', spotsLeft: 10 },
-        ],
-        'Thursday': [
-            { id: 'th1', time: '06:00 AM', title: 'Power Yoga', trainer: 'Sarah Lee', type: 'Yoga', intensity: 'Medium', spotsLeft: 5 },
-            { id: 'th2', time: '05:00 PM', title: 'Muscle Building', trainer: 'Alex Roy', type: 'Strength', intensity: 'High', spotsLeft: 4 },
-        ],
-        'Friday': [
-            { id: 'f1', time: '07:00 AM', title: 'Endurance Run', trainer: 'Mike Chen', type: 'Cardio', intensity: 'High', spotsLeft: 6 },
-            { id: 'f2', time: '06:00 PM', title: 'Full Body HIIT', trainer: 'Jenny Wi', type: 'HIIT', intensity: 'High', spotsLeft: 2 },
-        ],
-        'Saturday': [
-            { id: 's1', time: '08:00 AM', title: 'Weekend War', trainer: 'All Trainers', type: 'Strength', intensity: 'High', spotsLeft: 0 },
-            { id: 's2', time: '10:00 AM', title: 'Recovery Stretch', trainer: 'Sarah Lee', type: 'Yoga', intensity: 'Low', spotsLeft: 12 },
-        ],
-        'Sunday': [
-            { id: 'su1', time: '09:00 AM', title: 'Open Gym', trainer: 'Staff', type: 'Strength', intensity: 'Low', spotsLeft: 20 },
-        ]
-    };
 
     const getIntensityColor = (level: string) => {
         switch (level) {
@@ -71,20 +42,31 @@ const ScheduleSection = () => {
     };
 
     return (
-        <section id="schedule" className="py-24 px-6 bg-slate-100">
+        <section id="schedule" className="py-16 md:py-32 px-4 sm:px-6 bg-slate-100 overflow-hidden">
             <div className="container mx-auto">
-                <div className="text-center max-w-2xl mx-auto mb-16">
+                <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="text-center max-w-3xl mx-auto mb-20"
+                >
                     <span className="text-brand-orange font-bold tracking-wider uppercase text-sm mb-2 block">Class Timetable</span>
-                    <h2 className="font-display text-4xl md:text-6xl font-bold mb-6 text-slate-900">
+                    <h2 className="font-display text-3xl sm:text-4xl md:text-6xl font-bold mb-4 sm:mb-6 text-slate-900">
                         Weekly Schedule
                     </h2>
-                    <p className="text-slate-600 text-lg">
+                    <p className="text-slate-600 text-base sm:text-lg">
                         Find your perfect class. From high-intensity interval training to restorative yoga sequences.
                     </p>
-                </div>
+                </motion.div>
 
                 {/* Day Selector */}
-                <div className="flex flex-wrap justify-center gap-2 mb-12">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                    className="flex overflow-x-auto gap-2 mb-10 pb-3 hide-scrollbar -mx-4 sm:mx-0 px-4 sm:px-0 sm:flex-wrap sm:justify-center"
+                >
                     {days.map((day) => (
                         <button
                             key={day}
@@ -99,13 +81,17 @@ const ScheduleSection = () => {
                             {day}
                         </button>
                     ))}
-                </div>
+                </motion.div>
 
                 {/* Schedule Grid */}
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {scheduleData[activeDay]?.map((session) => (
-                        <div
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                    {scheduleData[activeDay]?.map((session, index) => (
+                        <motion.div
                             key={session.id}
+                            initial={{ opacity: 0, y: 30 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.5, delay: index * 0.1 }}
                             className="group relative rounded-3xl p-6 transition-all duration-300 border border-slate-200 bg-white hover:border-brand-blue/30 shadow-lg shadow-slate-200/50"
                         >
                             <div className="flex justify-between items-start mb-6">
@@ -144,7 +130,7 @@ const ScheduleSection = () => {
                                     {session.spotsLeft === 0 ? 'Full' : 'Book'}
                                 </Button>
                             </div>
-                        </div>
+                        </motion.div>
                     ))}
                 </div>
             </div>
