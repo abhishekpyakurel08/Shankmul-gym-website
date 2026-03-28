@@ -1,0 +1,54 @@
+{
+    "stats": [
+        {
+            "value": "5k+",
+            "label": "Members"
+        },
+        {
+            "value": "20+",
+            "label": "Trainers"
+        },
+        {
+            "value": "7+",
+            "label": "Years"
+        }
+    ],
+    "pillars": [
+        {
+            "icon": "Target",
+            "color": "brand-orange",
+            "title": "Our Mission",
+            "text": "To provide world-class fitness facilities and expert guidance accessible to everyone, helping our members discover their true potential."
+        },
+        {
+            "icon": "Users",
+            "color": "brand-blue",
+            "title": "Our Community",
+            "text": "We believe fitness is stronger together. Our diverse community of members supports and inspires each other every single day."
+        },
+        {
+            "icon": "History",
+            "color": "green-500",
+            "title": "Our History",
+            "text": "Established in 2018, we've grown from a small neighborhood gym to Kathmandu's premier fitness destination, serving over 5,000 members."
+        }
+    ],
+    "whyChooseUs": [
+        {
+            "title": "Top Equipment",
+            "text": "Premium Technogym & Rogue fitness equipment."
+        },
+        {
+            "title": "Expert Trainers",
+            "text": "Certified professionals to guide your journey."
+        },
+        {
+            "title": "Hygiene Focused",
+            "text": "Sanitized continuously for your safety."
+        },
+        {
+            "title": "Flexible Hours",
+            "text": "Open early and late to fit your schedule."
+        }
+    ]
+}
