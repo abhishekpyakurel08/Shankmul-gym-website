@@ -9,6 +9,7 @@ import Layout from '@/components/Layout';
 const HomePage = lazy(() => import('@/pages/HomePage'));
 const WorkoutDetail = lazy(() => import('@/pages/WorkoutDetail'));
 const NutritionDetail = lazy(() => import('@/pages/NutritionDetail'));
+const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
 
 
@@ -37,6 +38,7 @@ function App() {
             <Route path="beginner-workouts/:id" element={<WorkoutDetail />} />
             {/* <Route path="download" element={<DownloadPage />} /> */}
             {/* <Route path="download-app" element={<DownloadAppPage />} /> */}
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
 
 
