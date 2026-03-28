@@ -10,8 +10,32 @@ import WorkoutsSection from '@/components/sections/WorkoutsSection';
 import MotivationSection from '@/components/sections/MotivationSection';
 import ContactSection from '@/components/sections/ContactSection';
 import SEO from '@/components/SEO';
+import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import NotFoundPage from '@/pages/NotFoundPage';
+
+const VALID_HASHES = ['#home', '#about', '#nutrition', '#trainers', '#schedule', '#gallery', '#workouts', '#contact'];
 
 const HomePage = () => {
+    const { hash } = useLocation();
+    const [isValidHash, setIsValidHash] = useState(true);
+
+    useEffect(() => {
+        if (hash) {
+            if (!VALID_HASHES.includes(hash)) {
+                setIsValidHash(false);
+            } else {
+                setIsValidHash(true);
+            }
+        } else {
+            setIsValidHash(true);
+        }
+    }, [hash]);
+
+    if (!isValidHash) {
+        return <NotFoundPage />;
+    }
+
     return (
         <div id="home" className="bg-white">
             <SEO
