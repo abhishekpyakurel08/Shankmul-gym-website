@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import membershipData from '@/data/membershipData.json';
 
 const WhatsAppIcon = ({ size = 18, className }: { size?: number, className?: string }) => (
     <svg
@@ -16,25 +17,32 @@ const WhatsAppIcon = ({ size = 18, className }: { size?: number, className?: str
 
 const MembershipSection = () => {
     return (
-        <section id="membership" className="py-24 px-6 bg-slate-50">
+        <section id="membership" className="py-16 md:py-32 px-4 sm:px-6 bg-slate-50 overflow-hidden">
             <div className="container mx-auto">
-                <div className="text-center max-w-2xl mx-auto mb-16">
-                    <h2 className="font-display text-4xl font-bold mb-4 text-slate-900">Membership Plans</h2>
-                    <p className="text-slate-600">Choose the perfect plan for your fitness journey. No hidden fees.</p>
-                </div>
+                <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="text-center max-w-3xl mx-auto mb-20"
+                >
+                    <h2 className="font-display text-3xl sm:text-4xl md:text-6xl font-bold mb-4 sm:mb-6 text-slate-900">Membership Plans</h2>
+                    <p className="text-slate-600 text-base sm:text-lg">Choose the perfect plan for your fitness journey. No hidden fees.</p>
+                </motion.div>
 
-                <div className="grid md:grid-cols-3 gap-8">
-                    {[
-                        { name: "Basic", price: "Rs 2500", features: ["Access to Gym Floor", "Locker Access", "1 Free Training Session"] },
-                        { name: "Premium", price: "Rs 4500", featured: true, features: ["All Basic Features", "Unlimited Classes", "Nutritional Guidance", "Sauna Access"] },
-                        { name: "Elite", price: "Rs 8000", features: ["All Premium Features", "Personal Trainer (4x/mo)", "Guest Passes", "Priority Booking"] }
-                    ].map((plan, i) => (
-                        <div key={i} className={cn(
-                            "relative p-8 rounded-3xl border transition-all duration-300 hover:-translate-y-2",
-                            plan.featured
-                                ? "bg-brand-orange text-white border-brand-orange shadow-2xl shadow-brand-orange/20 scale-105 z-10"
-                                : "bg-white border-slate-200 hover:border-brand-orange/50 shadow-lg shadow-slate-200/50"
-                        )}>
+                <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
+                    {membershipData.map((plan, i) => (
+                        <motion.div
+                            key={i}
+                            initial={{ opacity: 0, y: 40 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.6, delay: i * 0.15 }}
+                            className={cn(
+                                "relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl border transition-all duration-300 hover:-translate-y-1 sm:hover:-translate-y-2",
+                                plan.featured
+                                    ? "bg-brand-orange text-white border-brand-orange shadow-2xl shadow-brand-orange/20 md:scale-105 z-10"
+                                    : "bg-white border-slate-200 hover:border-brand-orange/50 shadow-lg shadow-slate-200/50"
+                            )}>
                             {plan.featured && <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white text-brand-orange text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-md">Most Popular</div>}
                             <h3 className={cn("text-xl font-bold mb-2", plan.featured ? "text-white" : "text-slate-900")}>{plan.name}</h3>
                             <div className="flex items-baseline gap-1 mb-6">
@@ -64,7 +72,7 @@ const MembershipSection = () => {
                                     Choose Plan
                                 </Button>
                             </motion.a>
-                        </div>
+                        </motion.div>
                     ))}
                 </div>
             </div>
