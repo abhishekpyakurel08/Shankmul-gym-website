@@ -51,6 +51,8 @@ const HomePage = () => {
             {/* About Section */}
             <AboutSection />
 
+            {/* Gallery Section */}
+            <GallerySection />
 
             {/* Nutrition Section */}
             <NutritionSection />
@@ -61,8 +63,7 @@ const HomePage = () => {
             {/* Schedule Section */}
             <ScheduleSection />
 
-            {/* Gallery Section */}
-            <GallerySection />
+
 
             {/* Beginner Workouts Section */}
             <WorkoutsSection />

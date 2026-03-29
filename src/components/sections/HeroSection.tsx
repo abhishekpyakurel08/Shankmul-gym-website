@@ -113,13 +113,20 @@ const HeroSection = () => {
                                 transition={{ duration: 0.6, delay: 0.6 }}
                                 className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-4"
                             >
-                                <div className="bg-white border border-slate-100 p-4 sm:p-5 rounded-2xl flex items-start gap-3 shadow-sm hover:shadow-md transition-shadow">
+                                <div className="bg-white border border-slate-100 p-4 sm:p-5 rounded-2xl flex items-start gap-3 shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
                                     <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-brand-orange/10 flex items-center justify-center shrink-0">
                                         <MapPin className="text-brand-orange" size={18} />
                                     </div>
                                     <div>
                                         <h3 className="font-bold font-display text-slate-900 text-sm sm:text-base">Location</h3>
-                                        <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Shankhamul, Kathmandu</p>
+                                        <a
+                                            href="https://www.google.com/maps/place/Shankhamul+Health+Club+And+Fitness+Centre/@27.6841094,85.3308253,17z/data=!3m1!4b1!4m6!3m5!1s0x39eb19bfc1c849bd:0x8155f42b16996f5b!8m2!3d27.6841094!4d85.3334002!16s%2Fg%2F11hbg9jjdk?entry=ttu&g_ep=EgoyMDI2MDMyNC4wIKXMDSoASAFQAw%3D%3D"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs sm:text-sm text-slate-500 mt-0.5 block hover:text-brand-orange transition-colors"
+                                        >
+                                            Shankhamul, Kathmandu<br />Bagmati, Nepal
+                                        </a>
                                     </div>
                                 </div>
                                 <div className="bg-white border border-slate-100 p-4 sm:p-5 rounded-2xl flex items-start gap-3 shadow-sm hover:shadow-md transition-shadow">

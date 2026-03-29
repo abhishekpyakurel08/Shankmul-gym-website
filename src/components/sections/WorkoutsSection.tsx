@@ -105,9 +105,11 @@ const WorkoutsSection = () => {
                         <p className="text-slate-600 max-w-xl mx-auto mb-8">
                             Our trainers can create a personalized 4-week roadmap just for you. Completely free for new starters.
                         </p>
-                        <Button className="bg-brand-orange text-white hover:bg-orange-600 px-8 h-12 rounded-full text-lg shadow-lg shadow-orange-200">
-                            Get My Free Plan
-                        </Button>
+                        <a href="https://wa.me/9779743223799" target="_blank" rel="noopener noreferrer">
+                            <Button className="bg-brand-orange text-white hover:bg-orange-600 px-8 h-12 rounded-full text-lg shadow-lg shadow-orange-200">
+                                Get My Free Plan
+                            </Button>
+                        </a>
                     </div>
                     {/* Background Detail */}
                     <div className="absolute top-0 right-0 w-64 h-64 bg-brand-orange/5 rounded-full blur-3xl -mr-32 -mt-32" />

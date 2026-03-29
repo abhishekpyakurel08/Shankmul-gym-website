@@ -20,7 +20,7 @@ const MotivationSection = () => {
                         "The only bad workout is the one that didn't happen.
                         Join our community of over 5,000+ members transforming their lives today."
                     </p>
-                    <a href="#contact">
+                    <a href="https://wa.me/9779743223799" target="_blank" rel="noopener noreferrer">
                         <Button className="h-20 px-16 text-2xl bg-brand-orange text-white hover:bg-white hover:text-brand-orange rounded-full font-black shadow-[0_0_50px_rgba(255,107,0,0.3)] transition-all hover:scale-105 uppercase tracking-tighter">
                             Join The Club
                         </Button>

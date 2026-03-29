@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Core Components
 import Layout from '@/components/Layout';
@@ -34,6 +34,7 @@ function App() {
           {/* Public Routes */}
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
+            <Route path="nutrition" element={<Navigate to="/#nutrition" replace />} />
             <Route path="nutrition/:id" element={<NutritionDetail />} />
             <Route path="beginner-workouts/:id" element={<WorkoutDetail />} />
             {/* <Route path="download" element={<DownloadPage />} /> */}

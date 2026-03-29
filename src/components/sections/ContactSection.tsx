@@ -42,7 +42,14 @@ const ContactSection = () => {
                                     </div>
                                     Our Location
                                 </div>
-                                <p className="text-slate-600 pl-13">Shankhamul, Kathmandu<br />Bagmati, Nepal</p>
+                                <a
+                                    href="https://www.google.com/maps/place/Shankhamul+Health+Club+And+Fitness+Centre/@27.6841094,85.3308253,17z/data=!3m1!4b1!4m6!3m5!1s0x39eb19bfc1c849bd:0x8155f42b16996f5b!8m2!3d27.6841094!4d85.3334002!16s%2Fg%2F11hbg9jjdk?entry=ttu&g_ep=EgoyMDI2MDMyNC4wIKXMDSoASAFQAw%3D%3D"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-slate-600 pl-13 block hover:text-brand-orange transition-colors"
+                                >
+                                    Shankhamul, Kathmandu<br />Bagmati, Nepal
+                                </a>
                             </div>
 
                             <div className="space-y-4">
@@ -100,27 +107,17 @@ const ContactSection = () => {
                         transition={{ duration: 0.7 }}
                         className="flex-1 w-full lg:w-auto"
                     >
-                        <div className="relative rounded-[40px] overflow-hidden shadow-2xl border-8 border-slate-50 group">
-                            <img
-                                src="/images/map.png"
-                                alt="Shankhamul Health Club Map Location"
-                                className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105"
-                            />
-                            <div className="absolute inset-0 bg-brand-orange/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-
-                            {/* Floating Card on Map */}
-                            <div className="absolute bottom-8 left-8 right-8 bg-white/90 backdrop-blur-md p-6 rounded-3xl border border-white/20 shadow-xl hidden md:block">
-                                <h3 className="font-bold text-slate-900 mb-2">Shankhamul Health Club & Fitness Centre</h3>
-                                <p className="text-sm text-slate-600">Health Club and Fitness Centre</p>
-                                <a
-                                    href="https://maps.google.com"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-block mt-4 text-brand-orange font-bold text-sm hover:underline"
-                                >
-                                    Get Directions →
-                                </a>
-                            </div>
+                        <div className="relative rounded-[40px] overflow-hidden border-8 border-slate-50 group aspect-[4/3] md:aspect-square lg:aspect-video xl:aspect-[4/3] transition-all duration-500 hover:shadow-2xl">
+                            <iframe
+                                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3533.0739443114016!2d85.33082527554994!3d27.684109376195853!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39eb19bfc1c849bd%3A0x8155f42b16996f5b!2sShankhamul%20Health%20Club%20And%20Fitness%20Centre!5e0!3m2!1sen!2snp!4v1774780311782!5m2!1sen!2snp"
+                                width="100%"
+                                height="100%"
+                                style={{ border: 0 }}
+                                allowFullScreen
+                                loading="lazy"
+                                referrerPolicy="no-referrer-when-downgrade"
+                                className="grayscale hover:grayscale-0 transition-all duration-700"
+                            ></iframe>
                         </div>
                     </motion.div>
                 </div>

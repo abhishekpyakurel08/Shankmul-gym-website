@@ -29,7 +29,7 @@ const Layout = () => {
             setShowBackToTop(window.scrollY > 500);
 
             // ScrollSpy Logic
-            const sections = ['about', 'trainers', 'schedule', 'gallery', 'contact'];
+            const sections = ['about', 'nutrition', 'trainers', 'schedule', 'gallery', 'contact'];
             const scrollPos = window.scrollY + (window.innerHeight / 3);
 
             if (window.scrollY < 300) {
@@ -87,8 +87,9 @@ const Layout = () => {
     const navLinks = [
         { name: 'Home', path: '/' },
         { name: 'About', path: '/#about' },
-        { name: 'Schedule', path: '/#schedule' },
         { name: 'Gallery', path: '/#gallery' },
+        { name: 'Nutrition', path: '/#nutrition' },
+        { name: 'Schedule', path: '/#schedule' },
         { name: 'Contact', path: '/#contact' },
     ];
 
@@ -305,7 +306,14 @@ const Layout = () => {
                             <ul className="space-y-4 text-slate-600">
                                 <li className="flex items-start gap-3">
                                     <MapPin size={20} className="text-brand-orange shrink-0 mt-1" />
-                                    <span>Shankhamul, Kathmandu<br />Nepal</span>
+                                    <a
+                                        href="https://www.google.com/maps/place/Shankhamul+Health+Club+And+Fitness+Centre/@27.6841094,85.3308253,17z/data=!3m1!4b1!4m6!3m5!1s0x39eb19bfc1c849bd:0x8155f42b16996f5b!8m2!3d27.6841094!4d85.3334002!16s%2Fg%2F11hbg9jjdk?entry=ttu&g_ep=EgoyMDI2MDMyNC4wIKXMDSoASAFQAw%3D%3D"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="hover:text-brand-orange transition-colors"
+                                    >
+                                        Shankhamul, Kathmandu<br />Nepal
+                                    </a>
                                 </li>
                                 <li className="flex items-center gap-3">
                                     <User size={20} className="text-brand-orange shrink-0" />

@@ -13,7 +13,7 @@ const NutritionDetail = () => {
         return (
             <div className="pt-32 pb-20 text-center bg-slate-50 min-h-screen">
                 <h1 className="text-3xl font-bold mb-4 text-slate-900">Meal Not Found</h1>
-                <Link to="/nutrition">
+                <Link to="/#nutrition">
                     <Button className="bg-brand-orange text-white rounded-full px-8">Back to Nutrition</Button>
                 </Link>
             </div>
@@ -37,7 +37,7 @@ const NutritionDetail = () => {
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
                 <div className="absolute inset-0 flex items-center justify-center pt-12">
                     <div className="container mx-auto px-6">
-                        <Link to="/nutrition" className="inline-flex items-center text-white/80 hover:text-white mb-6 transition-colors font-medium">
+                        <Link to="/#nutrition" className="inline-flex items-center text-white/80 hover:text-white mb-6 transition-colors font-medium">
                             <ArrowLeft size={20} className="mr-2" />
                             Back to Plan
                         </Link>
@@ -116,9 +116,6 @@ const NutritionDetail = () => {
                                     </li>
                                 ))}
                             </ul>
-                            <Button className="w-full mt-10 bg-slate-900 text-white rounded-full h-12 font-bold hover:bg-brand-orange transition-colors">
-                                Add All to Shopping List
-                            </Button>
                         </div>
                     </div>
                 </div>
